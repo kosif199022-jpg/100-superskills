@@ -1,0 +1,13 @@
+{
+  "name": "superskills",
+  "owner": {
+    "name": "Kosif"
+  },
+  "plugins": [
+    {
+      "name": "100-superskills",
+      "source": "./",
+      "description": "100 مهارة خارقة"
+    }
+  ]
+}
