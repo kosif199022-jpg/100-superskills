@@ -4,7 +4,7 @@ description: "Thumbnails & Social Graphics. صور مصغّرة ليوتيوب �
 metadata:
   superskill: 17
   title_ar: الصور المصغّرة وتصاميم السوشيال
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 17 · الصور المصغّرة وتصاميم السوشيال — Thumbnails & Social Graphics

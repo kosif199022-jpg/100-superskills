@@ -4,7 +4,7 @@ description: "Image Critique & Reverse Prompt. تحليل أي صورة: الت�
 metadata:
   superskill: 19
   title_ar: نقد الصور واستخراج البرومبت
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 19 · نقد الصور واستخراج البرومبت — Image Critique & Reverse Prompt

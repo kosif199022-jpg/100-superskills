@@ -4,7 +4,7 @@ description: "30-Second Ad Creative. إعلان كامل لمنتج أو خدم�
 metadata:
   superskill: 23
   title_ar: الإعلان الإبداعي 30 ثانية
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 23 · الإعلان الإبداعي 30 ثانية — 30-Second Ad Creative

@@ -4,7 +4,7 @@ description: "Web Scraping & Automation. جمع بيانات عامة من ال�
 metadata:
   superskill: 46
   title_ar: جمع البيانات من الويب
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 46 · جمع البيانات من الويب — Web Scraping & Automation

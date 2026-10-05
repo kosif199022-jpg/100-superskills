@@ -4,7 +4,7 @@ description: "Flashcards, Quizzes & Exam Prep. تعلّم بالاستدعاء �
 metadata:
   superskill: 92
   title_ar: البطاقات والاختبارات والتحضير للامتحان
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 92 · البطاقات والاختبارات والتحضير للامتحان — Flashcards, Quizzes & Exam Prep

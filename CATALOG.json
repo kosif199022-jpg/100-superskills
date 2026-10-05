@@ -5698,5 +5698,461 @@
     "path": "2078-yellow-core/7366-ideation/SKILL.md"
    }
   ]
+ },
+ {
+  "n": "101",
+  "slug": "pro-video-editor-ffmpeg",
+  "ar": "المونتير المحترف بالكود (ffmpeg)",
+  "en": "Pro Code-Driven Video Editor",
+  "desc": "مونتاج احترافي كامل بلا برنامج مونتاج: قائمة قرارات EDL بصيغة JSON تتحوّل إلى فيلم نهائي عبر ffmpeg، مع قصّ واعٍ بالإطارات المفتاحية (بلا تجميد)، وقصّ تلقائي للصمت، ونقاط قطع على الإيقاع من طاقة الصوت، وانتقالات xfade بأنواعها، وقطع J/L للصوت، وتغيير السرعة، وLUT للتدرّج اللوني، وحرق الترجمة، وتطبيع الصوت بمرورين على −14 LUFS، وتصدير بأكثر من نسبة، وفحص المخرج بـ ffprobe.",
+  "sources": [
+   {
+    "name": "ffmpeg",
+    "plugin": "235-mas-video-lab",
+    "license": "MIT",
+    "path": "235-mas-video-lab/754-ffmpeg/SKILL.md"
+   },
+   {
+    "name": "losslesscut",
+    "plugin": "235-mas-video-lab",
+    "license": "MIT",
+    "path": "235-mas-video-lab/756-losslesscut/SKILL.md"
+   },
+   {
+    "name": "ffmpeg",
+    "plugin": "2759-charly-selkies",
+    "license": "MIT",
+    "path": "2759-charly-selkies/10885-ffmpeg/SKILL.md"
+   },
+   {
+    "name": "low-latency-live-streaming",
+    "plugin": "2387-streaming-media-engineering",
+    "license": "MIT",
+    "path": "2387-streaming-media-engineering/9240-low-latency-live-streaming/SKILL.md"
+   },
+   {
+    "name": "streaming-architecture-and-protocol-selection",
+    "plugin": "2387-streaming-media-engineering",
+    "license": "MIT",
+    "path": "2387-streaming-media-engineering/9242-streaming-architecture-and-protocol-sele/SKILL.md"
+   },
+   {
+    "name": "joined-audio-transcript-drift",
+    "plugin": "3323-joined-audio-transcript-drift",
+    "license": "MIT",
+    "path": "3323-joined-audio-transcript-drift/13837-joined-audio-transcript-drift/SKILL.md"
+   },
+   {
+    "name": "demo-video",
+    "plugin": "166-demo-video",
+    "license": "MIT",
+    "path": "166-demo-video/535-demo-video/SKILL.md"
+   },
+   {
+    "name": "video-pipeline-and-edge-deployment",
+    "plugin": "2259-computer-vision-engineering",
+    "license": "MIT",
+    "path": "2259-computer-vision-engineering/8610-video-pipeline-and-edge-deployment/SKILL.md"
+   }
+  ]
+ },
+ {
+  "n": "102",
+  "slug": "davinci-resolve-pipeline",
+  "ar": "خط إنتاج DaVinci Resolve الاحترافي",
+  "en": "DaVinci Resolve Pro Pipeline",
+  "desc": "مونتاج وتلوين كامل داخل DaVinci Resolve بسكربتات Python (واجهة Scripting الرسمية): خط زمني مرتّب بوقت التصوير، ونسخة عمل محمية، وتراكات مسمّاة (OVERLAY، GFX، SUBTITLE، AMBIENCE، SFX، MUSIC)، وترتيب عقد التلوين EXPOSURE→WB→CST→CONTRAST→SAT→LOOK، وقياس بالـ Scopes عبر لقطات ثابتة، وسجل علامات ملوّنة موحّد، ومهام رندر مع تحقق ffprobe، وسجل عمل Markdown لكل تغيير؛ ويتحوّل إلى دليل يدوي عندما تغيب الواجهة.",
+  "sources": [
+   {
+    "name": "davinci-resolve",
+    "plugin": "235-mas-video-lab",
+    "license": "MIT",
+    "path": "235-mas-video-lab/753-davinci-resolve/SKILL.md"
+   },
+   {
+    "name": "render-networking",
+    "plugin": "2993-render",
+    "license": "MIT",
+    "path": "2993-render/12715-render-networking/SKILL.md"
+   },
+   {
+    "name": "resolve-copilot-pr-feedback",
+    "plugin": "1028-resolve-copilot-pr-feedback",
+    "license": "MIT",
+    "path": "1028-resolve-copilot-pr-feedback/2311-resolve-copilot-pr-feedback/SKILL.md"
+   },
+   {
+    "name": "resolve-copilot-pr-feedback",
+    "plugin": "965-resolve-copilot-pr-feedback",
+    "license": "MIT",
+    "path": "965-resolve-copilot-pr-feedback/2249-resolve-copilot-pr-feedback/SKILL.md"
+   },
+   {
+    "name": "render-background-workers",
+    "plugin": "2993-render",
+    "license": "MIT",
+    "path": "2993-render/12701-render-background-workers/SKILL.md"
+   },
+   {
+    "name": "render-blueprints",
+    "plugin": "889-render",
+    "license": "MIT",
+    "path": "889-render/2002-render-blueprints/SKILL.md"
+   },
+   {
+    "name": "render-cli",
+    "plugin": "889-render",
+    "license": "MIT",
+    "path": "889-render/2003-render-cli/SKILL.md"
+   },
+   {
+    "name": "fusion-360",
+    "plugin": "230-mas-cad-studio",
+    "license": "MIT",
+    "path": "230-mas-cad-studio/725-fusion-360/SKILL.md"
+   }
+  ]
+ },
+ {
+  "n": "103",
+  "slug": "prompt-architect-reasoning-models",
+  "ar": "مهندس البرومبت لنماذج التفكير",
+  "en": "Prompt Architect for Reasoning Models",
+  "desc": "أعلى مستوى في هندسة البرومبت: تصنيف النموذج أولاً (تفكير حدودي، مُفكّر هجين مفتوح، مفتوح صغير، قديم)، ولا سقالة تفكير على نماذج التفكير بل معايير نجاح دقيقة وإعداد effort، و14 نمط تفكير بتكلفتها (CoT، Step-Back، Self-Consistency، ToT، ReAct، Reflexion، Plan-and-Solve، Least-to-Most، Self-Ask، Skeleton، Chain of Draft، Concise CoT، Token-budget، Sketch-of-Thought)، وسلّم إلزام الإخراج المهيكل بأربع درجات مع حقيقة «الصلاحية ليست الصحة»، وجبهة الكفاءة مقابل الفعالية بثلاث نسخ مُسمّاة، واقتصاد التخزين المؤقت، ودفاع خماسي ضد الحقن.",
+  "sources": [
+   {
+    "name": "prompt-engineering",
+    "plugin": "15-ai-tooling",
+    "license": "MIT",
+    "path": "15-ai-tooling/24-prompt-engineering/SKILL.md"
+   },
+   {
+    "name": "reasoning",
+    "plugin": "1642-ejentum-reasoning",
+    "license": "MIT",
+    "path": "1642-ejentum-reasoning/4628-reasoning/SKILL.md"
+   },
+   {
+    "name": "prompt-engineering",
+    "plugin": "55-ai-tooling",
+    "license": "MIT",
+    "path": "55-ai-tooling/84-prompt-engineering/SKILL.md"
+   },
+   {
+    "name": "codex-reasoning-level-calibration",
+    "plugin": "2230-ai-coding-model-guidance",
+    "license": "MIT",
+    "path": "2230-ai-coding-model-guidance/8466-codex-reasoning-level-calibration/SKILL.md"
+   },
+   {
+    "name": "unslop-reasoning",
+    "plugin": "2537-unslop",
+    "license": "MIT",
+    "path": "2537-unslop/9839-unslop-reasoning/SKILL.md"
+   },
+   {
+    "name": "prompt-engineering-patterns",
+    "plugin": "3103-llm-application-dev",
+    "license": "MIT",
+    "path": "3103-llm-application-dev/13282-prompt-engineering-patterns/SKILL.md"
+   },
+   {
+    "name": "prompt-engineering-patterns",
+    "plugin": "3498-llm-application-dev",
+    "license": "MIT",
+    "path": "3498-llm-application-dev/14229-prompt-engineering-patterns/SKILL.md"
+   },
+   {
+    "name": "reasoning-verifier",
+    "plugin": "2215-majestic-reasoning",
+    "license": "MIT",
+    "path": "2215-majestic-reasoning/8357-reasoning-verifier/SKILL.md"
+   }
+  ]
+ },
+ {
+  "n": "104",
+  "slug": "llm-judge-eval-lab",
+  "ar": "مختبر التقييم والقاضي الآلي",
+  "en": "LLM Judge & Eval Lab",
+  "desc": "تقييم مخرجات الذكاء الاصطناعي بأرقام تصمد: معايير ثنائية بدليل مقتبس (لا «من 1 إلى 10»)، وقاضٍ واحد لكل معيار، ولجنة قياسية + قاضٍ خصومي مع كشف التحيز المشترك بـ σ، وتبديل الترتيب ضد تحيز الموضع، وقضاة من مورّدين مختلفين، وتأكيدات تنفيذية (أوامر، ملفات، أنماط) قبل أي قاضٍ، ومعايرة ضد البشر بـ Cohen's κ لكل معيار، وpass@k/pass^k، وبوابة انحدار تخرج برمز 3، وتكلفة الرموز لكل نقطة دقة.",
+  "sources": [
+   {
+    "name": "prompt-eval-and-regression",
+    "plugin": "2361-prompt-engineering",
+    "license": "MIT",
+    "path": "2361-prompt-engineering/9115-prompt-eval-and-regression/SKILL.md"
+   },
+   {
+    "name": "eval-ladder",
+    "plugin": "2013-eval-ladder",
+    "license": "MIT",
+    "path": "2013-eval-ladder/7179-eval-ladder/SKILL.md"
+   },
+   {
+    "name": "eval-regression",
+    "plugin": "2992-development-skills",
+    "license": "MIT",
+    "path": "2992-development-skills/12687-eval-regression/SKILL.md"
+   },
+   {
+    "name": "eval",
+    "plugin": "342-kernel",
+    "license": "MIT",
+    "path": "342-kernel/1220-eval/SKILL.md"
+   },
+   {
+    "name": "eval-harness-first",
+    "plugin": "3104-llm-finetuning",
+    "license": "MIT",
+    "path": "3104-llm-finetuning/13288-eval-harness-first/SKILL.md"
+   },
+   {
+    "name": "eval-harness-first",
+    "plugin": "3499-llm-finetuning",
+    "license": "MIT",
+    "path": "3499-llm-finetuning/14235-eval-harness-first/SKILL.md"
+   },
+   {
+    "name": "build-llm-judge",
+    "plugin": "2328-llm-evaluation-engineering",
+    "license": "MIT",
+    "path": "2328-llm-evaluation-engineering/8937-build-llm-judge/SKILL.md"
+   },
+   {
+    "name": "performing-regression-analysis",
+    "plugin": "1601-regression-analysis-tool",
+    "license": "MIT",
+    "path": "1601-regression-analysis-tool/4572-performing-regression-analysis/SKILL.md"
+   }
+  ]
+ },
+ {
+  "n": "105",
+  "slug": "motion-director-pro",
+  "ar": "مخرج الموشن المحترف (فيلم لا شرائح)",
+  "en": "Motion Director Pro",
+  "desc": "منهج صناعة فيلم موشن حقيقي لا عرض شرائح متحركة: قائمة مشاهد مسمّاة بجمل فعلية، وسلسلة تحوّل بجسم واحد يحمل الفيلم (match anchors) بلا قطعات فارغة، وأرضية الحركة مقاسة إطاراً بإطار (نسبة الإطارات شبه الساكنة، والذروة، والكتل المتحركة) مقابل مرجع، وحدود تغطية البطل 25-45% من العرض، واختبار «الجسم» لكل إيقاع (عبارة + جسم يفعل فعلاً + سطح يفعله عليه)، وميزانية كاميرا 60/20/20 وحركات معدودة، ومجموعة أصول من أجزاء معزولة لا لقطات شاشة، وبوابة الثماني ثوانٍ قبل بناء البقية، و4 مساعدات حركة فقط.",
+  "sources": [
+   {
+    "name": "remotion-best-practices",
+    "plugin": "2712-remotion",
+    "license": "MIT",
+    "path": "2712-remotion/10430-remotion-best-practices/SKILL.md"
+   },
+   {
+    "name": "remotion-create",
+    "plugin": "2712-remotion",
+    "license": "MIT",
+    "path": "2712-remotion/10432-remotion-create/SKILL.md"
+   },
+   {
+    "name": "remotion-video-builder",
+    "plugin": "3198-remotion",
+    "license": "Apache-2.0",
+    "path": "3198-remotion/13555-remotion-video-builder/SKILL.md"
+   },
+   {
+    "name": "kinetic-inflated-hero",
+    "plugin": "100-ui-motion",
+    "license": "MIT",
+    "path": "100-ui-motion/209-kinetic-inflated-hero/SKILL.md"
+   },
+   {
+    "name": "gsap",
+    "plugin": "2702-hyperframes",
+    "license": "Apache-2.0",
+    "path": "2702-hyperframes/10377-gsap/SKILL.md"
+   },
+   {
+    "name": "brand-film",
+    "plugin": "101-video-skills",
+    "license": "MIT",
+    "path": "101-video-skills/212-brand-film/SKILL.md"
+   },
+   {
+    "name": "vercel-react-view-transitions",
+    "plugin": "1434-react-skills",
+    "license": "MIT",
+    "path": "1434-react-skills/3419-vercel-react-view-transitions/SKILL.md"
+   },
+   {
+    "name": "remotion",
+    "plugin": "235-mas-video-lab",
+    "license": "MIT",
+    "path": "235-mas-video-lab/757-remotion/SKILL.md"
+   }
+  ]
+ },
+ {
+  "n": "106",
+  "slug": "audio-reactive-captions-studio",
+  "ar": "استوديو الصوت التفاعلي والترجمة المتحركة",
+  "en": "Audio-Reactive & Animated Captions Studio",
+  "desc": "أنيميشن يتنفّس مع الصوت وترجمة متحركة بأسلوب تيك توك: استخراج طاقة الصوت (RMS و16 حزمة ترددية) لكل إطار إلى JSON حتمي يقود الحركة (الباص للحركات الكبيرة، والتريبل للتفاصيل، وRMS للعموميات) مع تنعيم؛ وصفحات ترجمة من طوابع الكلمات (Whisper) بإبراز الكلمة المنطوقة، وSRT وASS كاريوكي، وآلة كاتبة بمؤشر ينبض، وقطع على الإيقاع بحساب BPM، ومرئي صوت (أعمدة، وموجة، ودائرة) على Canvas بطبقتين.",
+  "sources": [
+   {
+    "name": "captions",
+    "plugin": "3613-youtube-skills",
+    "license": "MIT",
+    "path": "3613-youtube-skills/14533-captions/SKILL.md"
+   },
+   {
+    "name": "whisper",
+    "plugin": "2760-charly-tools",
+    "license": "MIT",
+    "path": "2760-charly-tools/10941-whisper/SKILL.md"
+   },
+   {
+    "name": "subtitles",
+    "plugin": "3613-youtube-skills",
+    "license": "MIT",
+    "path": "3613-youtube-skills/14534-subtitles/SKILL.md"
+   },
+   {
+    "name": "hyperframes",
+    "plugin": "2702-hyperframes",
+    "license": "Apache-2.0",
+    "path": "2702-hyperframes/10378-hyperframes/SKILL.md"
+   },
+   {
+    "name": "fetch-tiktok-mentions",
+    "plugin": "886-intel",
+    "license": "MIT",
+    "path": "886-intel/1989-fetch-tiktok-mentions/SKILL.md"
+   },
+   {
+    "name": "remotion-captions",
+    "plugin": "2712-remotion",
+    "license": "MIT",
+    "path": "2712-remotion/10431-remotion-captions/SKILL.md"
+   },
+   {
+    "name": "social-video-hooks",
+    "plugin": "101-video-skills",
+    "license": "MIT",
+    "path": "101-video-skills/218-social-video-hooks/SKILL.md"
+   },
+   {
+    "name": "ad-creative",
+    "plugin": "1520-digital-marketing-pro",
+    "license": "MIT",
+    "path": "1520-digital-marketing-pro/3975-ad-creative/SKILL.md"
+   }
+  ]
+ },
+ {
+  "n": "107",
+  "slug": "excel-model-architect",
+  "ar": "مهندس النماذج المالية في إكسل",
+  "en": "Excel Financial Model Architect",
+  "desc": "نماذج إكسل تصمد أمام مراجعة مجلس الإدارة: شجرة محرّكات (الحجم × السعر × المزيج) لا «ينمو 5%»، وفصل المدخلات عن الميكانيكا عن المخرجات في أوراق مستقلة، وتكامل القوائم الثلاث بصفوف فحص (BS_check وCF_check تساوي صفراً)، وسيناريوهات كتجاوزات محرّكات بمفتاح واحد لا نماذج منفصلة، وجداول حساسية ثنائية، ودورة التباين (فعلي، وأحدث توقع، وتوقع سابق مجمّد)، واصطلاحات IB (أزرق مدخلات، أسود صيغ، أخضر روابط، أصفر افتراضات حرجة، صفر «-»، سالب أحمر بأقواس، مضاعفات x)، ومولّد ومدقّق آليان بـ openpyxl مع بوابة إعادة حساب.",
+  "sources": [
+   {
+    "name": "chronograph-budget-vs-actuals-variance",
+    "plugin": "1102-chronograph-gp",
+    "license": "Apache-2.0",
+    "path": "1102-chronograph-gp/2495-chronograph-budget-vs-actuals-variance/SKILL.md"
+   },
+   {
+    "name": "build-cash-forecast-and-liquidity-plan",
+    "plugin": "2399-treasury-management",
+    "license": "MIT",
+    "path": "2399-treasury-management/9289-build-cash-forecast-and-liquidity-plan/SKILL.md"
+   },
+   {
+    "name": "experiment-sensitivity-optimization",
+    "plugin": "2199-lvtd-skills",
+    "license": "MIT",
+    "path": "2199-lvtd-skills/8069-experiment-sensitivity-optimization/SKILL.md"
+   },
+   {
+    "name": "thirteen-week-cash-forecast",
+    "plugin": "2294-finance",
+    "license": "MIT",
+    "path": "2294-finance/8797-thirteen-week-cash-forecast/SKILL.md"
+   },
+   {
+    "name": "variance-analysis",
+    "plugin": "321-finance",
+    "license": "Apache-2.0",
+    "path": "321-finance/977-variance-analysis/SKILL.md"
+   },
+   {
+    "name": "forecast-and-alert",
+    "plugin": "2295-finops-cloud-cost",
+    "license": "MIT",
+    "path": "2295-finops-cloud-cost/8800-forecast-and-alert/SKILL.md"
+   },
+   {
+    "name": "chronograph-cashflow-forecast",
+    "plugin": "1103-chronograph-lp",
+    "license": "Apache-2.0",
+    "path": "1103-chronograph-lp/2500-chronograph-cashflow-forecast/SKILL.md"
+   },
+   {
+    "name": "budget-optimizer",
+    "plugin": "1520-digital-marketing-pro",
+    "license": "MIT",
+    "path": "1520-digital-marketing-pro/3989-budget-optimizer/SKILL.md"
+   }
+  ]
+ },
+ {
+  "n": "108",
+  "slug": "excel-automation-power",
+  "ar": "أتمتة إكسل المتقدمة (Power Query وLAMBDA وDAX)",
+  "en": "Advanced Excel Automation",
+  "desc": "إكسل كمنصّة أتمتة: Power Query بوصفات M (إلغاء التدوير، والدمج، والمعاملات، والطيّ إلى المصدر، والتحديث)، ومكتبة دوال LAMBDA مسمّاة تُحقن في الملف آلياً مع ورقة توثيق، ومصفوفات ديناميكية (FILTER/UNIQUE/SORT/MAP/REDUCE/SCAN/BYROW)، وأنماط DAX للقياسات الزمنية، وOffice Scripts وVBA عند الحاجة فقط، وPython في إكسل، وترجمة الصيغ بين Excel وGoogle Sheets وLark (ARRAYFORMULA والإسقاط ودلالات المصفوفات)، ومعادلات DMAIC الإحصائية وما لا يحسبه إكسل بدقة (Cpk الحقيقي)، وبوابة إعادة حساب وعرض PDF للفحص البصري.",
+  "sources": [
+   {
+    "name": "aws-http-server-on-lambda-web-adapter",
+    "plugin": "3270-aws-http-server-on-lambda-web-adapter",
+    "license": "MIT",
+    "path": "3270-aws-http-server-on-lambda-web-adapter/13781-aws-http-server-on-lambda-web-adapter/SKILL.md"
+   },
+   {
+    "name": "lambda",
+    "plugin": "625-lambda-builder",
+    "license": "MIT",
+    "path": "625-lambda-builder/1654-lambda/SKILL.md"
+   },
+   {
+    "name": "excel-pivot-wizard",
+    "plugin": "1633-excel-analyst-pro",
+    "license": "MIT",
+    "path": "1633-excel-analyst-pro/4606-excel-pivot-wizard/SKILL.md"
+   },
+   {
+    "name": "aws-lambda-durable-functions",
+    "plugin": "370-aws-serverless",
+    "license": "Apache-2.0",
+    "path": "370-aws-serverless/1368-aws-lambda-durable-functions/SKILL.md"
+   },
+   {
+    "name": "aws-lambda-managed-instances",
+    "plugin": "370-aws-serverless",
+    "license": "Apache-2.0",
+    "path": "370-aws-serverless/1369-aws-lambda-managed-instances/SKILL.md"
+   },
+   {
+    "name": "lean-startup",
+    "plugin": "3432-product-innovation",
+    "license": "MIT",
+    "path": "3432-product-innovation/14092-lean-startup/SKILL.md"
+   },
+   {
+    "name": "akbun-davinciresolve-contrast",
+    "plugin": "1096-akbun-editvideo",
+    "license": "MIT",
+    "path": "1096-akbun-editvideo/2432-akbun-davinciresolve-contrast/SKILL.md"
+   },
+   {
+    "name": "dt-obs-aws",
+    "plugin": "1368-dynatrace",
+    "license": "Apache-2.0",
+    "path": "1368-dynatrace/3120-dt-obs-aws/SKILL.md"
+   }
+  ]
  }
 ]

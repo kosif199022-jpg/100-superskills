@@ -4,7 +4,7 @@ description: "SVG Illustration & Icons. رسوم SVG نظيفة من الكود:
 metadata:
   superskill: 14
   title_ar: الرسوم المتجهة والأيقونات
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 14 · الرسوم المتجهة والأيقونات — SVG Illustration & Icons

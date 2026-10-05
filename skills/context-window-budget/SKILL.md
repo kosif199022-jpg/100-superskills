@@ -4,7 +4,7 @@ description: "Context Window Budget. ما يدخل السياق وما لا يد
 metadata:
   superskill: 33
   title_ar: ميزانية نافذة السياق
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 33 · ميزانية نافذة السياق — Context Window Budget

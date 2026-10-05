@@ -4,7 +4,7 @@ description: "Few-Shot & Dataset Curation. أمثلة ومجموعات تدري�
 metadata:
   superskill: 34
   title_ar: تنسيق الأمثلة ومجموعات البيانات
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 34 · تنسيق الأمثلة ومجموعات البيانات — Few-Shot & Dataset Curation

@@ -4,7 +4,7 @@ description: "Automation Scripts & CLI Tools. سكربتات Python/Bash/PowerSh
 metadata:
   superskill: 65
   title_ar: سكربتات الأتمتة وأدوات سطر الأوامر
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 65 · سكربتات الأتمتة وأدوات سطر الأوامر — Automation Scripts & CLI Tools

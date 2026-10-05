@@ -4,7 +4,7 @@ description: "Voice-over & TTS Direction. سكربتات تعليق صوتي ب�
 metadata:
   superskill: 80
   title_ar: التعليق الصوتي وإخراج TTS
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 80 · التعليق الصوتي وإخراج TTS — Voice-over & TTS Direction

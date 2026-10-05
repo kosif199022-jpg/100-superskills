@@ -4,7 +4,7 @@ description: "Image Prompt Forge. برومبت صورة احترافي من مو
 metadata:
   superskill: 09
   title_ar: مصنع برومبتات الصور
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 09 · مصنع برومبتات الصور — Image Prompt Forge

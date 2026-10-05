@@ -4,7 +4,7 @@ description: "Docker & CI/CD. حاوية ونشر مستمر لأي مشروع: 
 metadata:
   superskill: 59
   title_ar: Docker وCI/CD
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 59 · Docker وCI/CD — Docker & CI/CD

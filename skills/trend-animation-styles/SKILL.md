@@ -4,7 +4,7 @@ description: "Trending Animation Styles. مكتبة الأساليب الرائ�
 metadata:
   superskill: 02
   title_ar: أساليب الأنيميشن الترند
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 02 · أساليب الأنيميشن الترند — Trending Animation Styles

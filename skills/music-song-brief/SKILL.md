@@ -4,7 +4,7 @@ description: "Songs & Music Briefs. كلمات أغانٍ وموجزات موس�
 metadata:
   superskill: 82
   title_ar: الأغاني وموجز الموسيقى
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 82 · الأغاني وموجز الموسيقى — Songs & Music Briefs

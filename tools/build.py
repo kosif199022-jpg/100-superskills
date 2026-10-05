@@ -32,21 +32,26 @@ SKILLS = ROOT / "skills"
 DIST = ROOT / "dist"
 ATLAS_ROOT = Path(os.environ.get("KOSIF_ATLAS_SKILLS", str(ROOT.parent / "kosif-atlas" / "skills")))
 ATLAS_URL = "https://github.com/kosif199022-jpg/kosif-atlas/tree/main/skills/"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 PERMISSIVE = ("MIT", "Apache", "BSD", "ISC", "CC0", "Unlicense", "MIT-0", "WTFPL", "0BSD", "Zlib")
 HANDWRITTEN_DIRS = ("scripts", "templates", "assets")
 HANDWRITTEN_REFS = ("motion-rules.md", "styles.md", "formula.md", "blindspot-questions.md", "platforms.md",
-                    "excel-formulas.md", "three-js-recipe.md")
+                    "excel-formulas.md", "three-js-recipe.md", "ffmpeg-recipes.md", "transitions-catalog.md",
+                    "color-grading-order.md", "resolve-api-map.md", "reasoning-patterns.md", "structured-output-ladder.md",
+                    "model-guidance.md", "judge-design.md", "film-brief-template.md", "motion-floor.md",
+                    "captions-rules.md", "model-conventions.md", "driver-trees.md", "power-query-recipes.md",
+                    "dax-patterns.md", "lambda-catalog.md", "formula-translation.md")
 
 sys.path.insert(0, str(TOOLS))
 from data_a import A  # noqa: E402
 from data_b import B  # noqa: E402
 from data_c import C  # noqa: E402
 from data_d import D  # noqa: E402
+from data_e import E  # noqa: E402
 
-ALL = A + B + C + D
-assert len(ALL) == 100, f"expected 100 skills, got {len(ALL)}"
-assert len({s["slug"] for s in ALL}) == 100, "duplicate slug"
+ALL = A + B + C + D + E
+assert len(ALL) >= 100, f"expected >= 100 skills, got {len(ALL)}"
+assert len({s["slug"] for s in ALL}) == len(ALL), "duplicate slug"
 
 CATEGORIES = [
     ("الحركة والأنيميشن", "Motion & Animation", range(1, 9)),
@@ -55,6 +60,7 @@ CATEGORIES = [
     ("أدوات Office والبيانات", "Office & Data", range(36, 51)),
     ("تصميم المواقع والبرمجة", "Web Design & Programming", range(51, 76)),
     ("الكتابة والصوت والأعمال والتعليم والقرار", "Writing, Audio, Business, Learning & Decisions", range(76, 101)),
+    ("الدفعة المتقدمة جداً: مونتاج وبرومبت وأنيميشن وإكسل (من قراءة المحتوى الكامل للأطلس)", "Ultra-Advanced: Editing, Prompts, Motion & Excel", range(101, 200)),
 ]
 
 
@@ -212,7 +218,7 @@ def render_sources(s: dict, sources: list[dict]) -> str:
 
 def render_readme(records: list[dict]) -> str:
     out = ["# 100 مهارة خارقة — 100 Super Skills", "",
-           "مئة مهارة جديدة لكلاود (Claude Code وClaude Desktop وclaude.ai) وChatGPT، رُكّبت من قراءة فهرس "
+           f"{len(ALL)} مهارة جديدة لكلاود (Claude Code وClaude Desktop وclaude.ai) وChatGPT، رُكّبت من قراءة فهرس "
            "**KOSIF Atlas** الكامل (15,122 مهارة في 3,691 إضافة) ودمج قدرات أقوى المهارات مفتوحة الترخيص في كل مجال، "
            "مع خبرة مجلد «الاداة» (مسار الأنيميشن المُثبت، ومنهج البرومبت السينمائي، وأدوات القياس الحتمية).", "",
            "**المميزات:** أنيميشن ترند يصنعه كلاود كاملاً (8 مهارات)، وبرومبتات صور وفيديو بكل المنصات، وسيّد برومبتات "
@@ -229,11 +235,15 @@ def render_readme(records: list[dict]) -> str:
             if int(r["n"]) in rng:
                 out.append(f"| {r['n']} | [{r['ar']}](skills/{r['slug']}/SKILL.md) | `{r['slug']}` | {r['desc'][:110]}… |")
         out.append("")
-    out += ["## كيف بُنيت", "",
+    out += ["## الفهرس العميق", "",
+            "`DEEP-INDEX.md` قراءة كاملة لنص كل مهارة من الـ15,122 (15.1 مليون كلمة): توزيع المجالات بكثافة الذكر، والأدوات الأكثر ذكراً، ولغات السكربتات. "
+            "البحث النصي الكامل عبر `tools/atlas-deep.sqlite` (FTS5) و`tools/atlas-deep.json` (مرفقان بالإصدار على GitHub لحجمهما)؛ يُعاد بناؤهما بـ `python tools/deep_index.py`.", "",
+            "## كيف بُنيت", "",
             "1. `tools/catalog.py` قرأ كل ملفات SKILL.md في الأطلس المحلي وأخرج فهرساً (الاسم، والوصف، والترخيص، والمصدر).",
             "2. `tools/data_*.py` تعريفات المئة مهارة: الوصف، والمحفّزات، وخط الإنتاج، وبوابات الجودة، والمخرجات، وكلمات المطابقة.",
             "3. `tools/build.py` يطابق كل مهارة مع أقوى مهارات الأطلس مفتوحة الترخيص، ويكتب SKILL.md وreferences/sources.md، ويبني الحزم.",
-            "4. السكربتات في المهارات الرئيسية (01، 02، 09، 10، 26، 36) مكتوبة يدوياً ومُجرَّبة؛ انظر `TESTS.md`.", "",
+            "4. السكربتات في المهارات الرئيسية (01، 02، 09، 10، 26، 36) والدفعة المتقدمة (101–108) مكتوبة يدوياً ومُجرَّبة؛ انظر `TESTS.md`.",
+            "5. الدفعة 101–108 بُنيت بعد قراءة المحتوى الكامل لأغنى 60 مصدراً في المونتاج والبرومبت والأنيميشن والإكسل (مقتطفاتها في `references/sources.md` لكل مهارة).", "",
             "## الترخيص", "",
             "تعريفات المهارات والسكربتات: MIT. مقتطفات `references/sources.md` تحمل تراخيص أصحابها (MIT/Apache/BSD) المذكورة بجوارها.", ""]
     return "\n".join(out)
@@ -346,13 +356,13 @@ def main() -> None:
                     z.write(p, f"{s['slug']}/{p.relative_to(sdir).as_posix()}")
     with zipfile.ZipFile(DIST / "100-superskills-claude-code.zip", "w", zipfile.ZIP_DEFLATED) as z:
         for p in ROOT.rglob("*"):
-            if p.is_file() and "dist" not in p.parts and "__pycache__" not in p.parts and p.name != "atlas-catalog.json":
+            if p.is_file() and "dist" not in p.parts and "__pycache__" not in p.parts and p.name != "atlas-catalog.json" and not p.name.startswith("atlas-deep"):
                 z.write(p, f"100-superskills/{p.relative_to(ROOT).as_posix()}")
     # ChatGPT custom GPT bundle: 10 knowledge files (10 skills each) + instructions
     gpt = DIST / "custom-gpt"
     (gpt / "knowledge").mkdir(parents=True)
     write(gpt / "instructions.md", render_gpt_instructions())
-    for i in range(10):
+    for i in range((len(ALL) + 9) // 10):
         chunk = ALL[i * 10:(i + 1) * 10]
         buf = io.StringIO()
         buf.write(f"# 100 مهارة خارقة — المهارات {chunk[0]['n']} إلى {chunk[-1]['n']}\n\n")

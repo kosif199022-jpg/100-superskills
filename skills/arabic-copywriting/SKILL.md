@@ -4,7 +4,7 @@ description: "Arabic Copywriting. نصوص تسويقية عربية تبيع: �
 metadata:
   superskill: 76
   title_ar: الكتابة الإعلانية العربية
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 76 · الكتابة الإعلانية العربية — Arabic Copywriting

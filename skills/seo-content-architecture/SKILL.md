@@ -4,7 +4,7 @@ description: "SEO & Content Architecture. ظهور في البحث بلا خدع
 metadata:
   superskill: 69
   title_ar: SEO وبنية المحتوى
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 69 · SEO وبنية المحتوى — SEO & Content Architecture

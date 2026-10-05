@@ -1,4 +1,4 @@
-# سجل الاختبارات (2026-10-05، Windows 11، Python 3.13، ffmpeg 9.0، Edge headless عبر Playwright)
+# سجل الاختبارات (2026-10-05 و2026-10-06، Windows 11، Python 3.13، ffmpeg 9.0، Edge headless عبر Playwright)
 
 | # | ما اختُبر | الأمر | النتيجة |
 |---|---|---|---|
@@ -13,8 +13,22 @@
 | 9 | مخرج برومبتات الفيديو | `video_prompt_forge.py shots.json --platforms veo,sora` | لقطتان × منصتان، قصّ المدة الزائدة إلى حد المنصة؛ خروج 0 |
 | 10 | فاحص الإكسل | `xlsx_check.py t.xlsx` على ملف مولّد بـ openpyxl | كشف رقماً كنص (F3)، وقيمة ثابتة وسط عمود صيغ (F5)، وVLOOKUP قديمة؛ REVISE كما هو متوقع |
 
+| 11 | الفهرس العميق | `python tools/deep_index.py` | قرأ نص كل SKILL.md (15,122 مهارة، 15.1 مليون كلمة) في 18.6 دقيقة (1116 ث)؛ وسوم بكثافة الذكر؛ SQLite FTS5 + JSON + `DEEP-INDEX.md` |
+| 12 | 101 فحص الوسائط | `probe.py clipA.mp4 --keyframes` | كودك/دقة/fps/إطارات مفتاحية + تحذيرات VFR |
+| 13 | 101 قصّ الصمت والإيقاع | `silence_cut.py` و`beat_cuts.py` على صوت مُصنَّع | كشف صمت 1.5 ث وحذفه بهامش؛ BPM 120.8 من نبضات كل 0.5 ث (الصحيح 120) |
+| 14 | 101 تجميع EDL | `edl_render.py edl.json --ratios 1:1` | مقطعان + xfade + J-cut + سرعة 1.5× + موسيقى −18 dB + loudnorm بمرورين؛ المدة 4.000 = المتوقعة؛ القياس اللاحق −14.0 LUFS و−2.1 dBTP؛ نسخة 1:1 |
+| 15 | 102 خط DaVinci | `resolve_pipeline.py doctor` / `verify` | بلا Resolve: وضع يدوي بخروج 2 (لا ادعاء تنفيذ)؛ verify يقرأ ffprobe |
+| 16 | 103 جبهة البرومبت | `prompt_frontier.py p.md --model claude` | اكتشف سقالة التفكير، وأمثلة بآثار تفكير، والصراخ، وترتيب answer قبل reason، وعدّ القيود؛ فئة Gemma 3 تعطي درجة إلزام 2→3 |
+| 17 | 103 درع الحقن | `injection_shield.py scan/wrap/check/suite` | فحص مسبق FLAG، تسوير + كناري، كشف الكناري في المخرج (خروج 3)، 20 حالة هجوم |
+| 18 | 104 مختبر التقييم | `eval_runner.py score/gate/kappa/bench` | σ، فجوة خصومي 2.8 → ترجيح 0.6/0.4، بوابة انحدار تخرج 3، κ لكل معيار، pass@3/pass^3 |
+| 19 | 105 طاقة الحركة والبوابة | `motion_energy.py demo2d.mp4 --ref demo3d.mp4` / `storyboard_gate.py` | كشف 84% شبه ساكن وتجميد 1.8 ث في المثال؛ البوابة أمسكت الوصف المزاجي و11 كلمة وتغطية 18% وغياب الجسم الحامل |
+| 20 | 106 الصوت والترجمة | `extract_audio_data.py` + `captions_pages.py` + رندر القالبين | 180 إطار بيانات (16 حزمة)، 3 صفحات ترجمة + SRT/VTT/ASS، وقالب الترجمة بإبراز الكلمة وقالب الصوت التفاعلي صُوّرا وجُمّعا إلى mp4 |
+| 21 | 107 النموذج المالي | `model_builder.py` → `xlsx_recalc.py` → `model_audit.py` | 8 أوراق و248 صيغة؛ LibreOffice أعاد الحساب (موجود على الجهاز) بلا أخطاء؛ Checks = OK وBS_check/CF_check صفر في كل الفترات؛ التدقيق PASS بلا أرقام مدفونة |
+| 22 | 108 أتمتة إكسل | `lambda_library.py`, `formula_translate.py` | 18 دالة LAMBDA مسمّاة مع Docs؛ الترجمة لفّت ARRAYFORMULA وحذّرت من المراجع الهيكلية وDAY(b−a) وLET في Lark |
+
 ## ما لم يُختبر هنا (قل «not-executed» حتى يُشغَّل)
 - السكربتات داخل claude.ai أو ChatGPT (المهارات هناك منهجيات؛ السكربتات تحتاج بيئة تنفيذ).
+- `resolve_pipeline.py` ضد DaVinci Resolve Studio حقيقي (الوضع اليدوي فقط هو المختبر).
 - `capture.py` على Linux/macOS بلا Edge (المسار البديل: `python -m playwright install chromium`).
 - دقة البرومبتات على المولّدات نفسها (Midjourney وVeo…) تحتاج توليداً فعلياً ومراجعة بصرية.
 

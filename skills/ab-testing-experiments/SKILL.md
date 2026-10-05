@@ -4,7 +4,7 @@ description: "A/B Testing & Experiments. تصميم وتحليل التجارب:
 metadata:
   superskill: 49
   title_ar: اختبارات A/B والتجارب
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 49 · اختبارات A/B والتجارب — A/B Testing & Experiments

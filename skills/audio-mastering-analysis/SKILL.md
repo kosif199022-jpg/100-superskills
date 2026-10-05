@@ -4,7 +4,7 @@ description: "Audio Analysis & Mastering. قياس وإصلاح الصوت با�
 metadata:
   superskill: 83
   title_ar: تحليل الصوت والماسترينغ
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 83 · تحليل الصوت والماسترينغ — Audio Analysis & Mastering

@@ -4,7 +4,7 @@ description: "Git & GitHub Workflow. إدارة المستودعات باحتر�
 metadata:
   superskill: 64
   title_ar: سير عمل Git وGitHub
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 64 · سير عمل Git وGitHub — Git & GitHub Workflow

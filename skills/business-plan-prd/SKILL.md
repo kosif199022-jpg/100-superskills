@@ -4,7 +4,7 @@ description: "Business Plan & PRD. من الفكرة إلى وثيقة قابل�
 metadata:
   superskill: 87
   title_ar: خطة العمل ووثيقة المنتج
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 87 · خطة العمل ووثيقة المنتج — Business Plan & PRD

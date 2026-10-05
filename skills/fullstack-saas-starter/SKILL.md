@@ -4,7 +4,7 @@ description: "Full-Stack SaaS Starter. تطبيق SaaS كامل من الصفر:
 metadata:
   superskill: 56
   title_ar: منصة SaaS كاملة
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 56 · منصة SaaS كاملة — Full-Stack SaaS Starter

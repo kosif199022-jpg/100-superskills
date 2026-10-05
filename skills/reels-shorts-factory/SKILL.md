@@ -4,7 +4,7 @@ description: "Reels & Shorts Factory. محتوى عمودي قصير بكميا�
 metadata:
   superskill: 24
   title_ar: مصنع الريلز والشورتس
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 24 · مصنع الريلز والشورتس — Reels & Shorts Factory

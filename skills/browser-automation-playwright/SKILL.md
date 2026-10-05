@@ -4,7 +4,7 @@ description: "Browser Automation (Playwright). تشغيل المتصفح برم�
 metadata:
   superskill: 66
   title_ar: أتمتة المتصفح بـ Playwright
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 66 · أتمتة المتصفح بـ Playwright — Browser Automation (Playwright)

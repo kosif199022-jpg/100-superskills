@@ -4,7 +4,7 @@ description: "Structured Output & JSON. إخراج قابل للتحليل بر�
 metadata:
   superskill: 29
   title_ar: المخرجات المهيكلة JSON
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 29 · المخرجات المهيكلة JSON — Structured Output & JSON

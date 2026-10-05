@@ -4,7 +4,7 @@ description: "Dashboards & Data Visualization. لوحات معلومات ورس�
 metadata:
   superskill: 44
   title_ar: لوحات المعلومات والتصور البياني
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 44 · لوحات المعلومات والتصور البياني — Dashboards & Data Visualization

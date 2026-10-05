@@ -4,7 +4,7 @@ description: "LLM Judge & Eval Suites. تقييم أي ميزة ذكاء اصط�
 metadata:
   superskill: 30
   title_ar: قاضي النماذج ومجموعات التقييم
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 30 · قاضي النماذج ومجموعات التقييم — LLM Judge & Eval Suites

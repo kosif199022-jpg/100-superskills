@@ -4,7 +4,7 @@ description: "Storyboard & Shot List. يحوّل أي فكرة أو سكربت �
 metadata:
   superskill: 12
   title_ar: الستوري بورد وقائمة اللقطات
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 12 · الستوري بورد وقائمة اللقطات — Storyboard & Shot List

@@ -4,7 +4,7 @@ description: "Investor Pitch Deck. عرض من 10 إلى 12 شريحة بترت�
 metadata:
   superskill: 88
   title_ar: عرض المستثمرين
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 88 · عرض المستثمرين — Investor Pitch Deck

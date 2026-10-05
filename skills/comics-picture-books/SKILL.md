@@ -4,7 +4,7 @@ description: "Comics & Picture Books. قصص مصوّرة وكتب أطفال م
 metadata:
   superskill: 22
   title_ar: القصص المصوّرة وكتب الأطفال
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 22 · القصص المصوّرة وكتب الأطفال — Comics & Picture Books

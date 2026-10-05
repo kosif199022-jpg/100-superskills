@@ -4,7 +4,7 @@ description: "Language Coach. تعلّم لغة بالممارسة: تشخيص �
 metadata:
   superskill: 94
   title_ar: مدرّب اللغات
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 94 · مدرّب اللغات — Language Coach

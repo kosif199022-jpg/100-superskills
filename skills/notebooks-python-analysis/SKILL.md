@@ -4,7 +4,7 @@ description: "Python Analysis Notebooks. دفاتر Jupyter مرتبة للتح�
 metadata:
   superskill: 47
   title_ar: دفاتر Python للتحليل
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 47 · دفاتر Python للتحليل — Python Analysis Notebooks

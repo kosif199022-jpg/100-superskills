@@ -4,7 +4,7 @@ description: "Lighting Plan. خطة إضاءة لأي تصوير أو مشهد �
 metadata:
   superskill: 18
   title_ar: تخطيط الإضاءة للصور والفيديو
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 18 · تخطيط الإضاءة للصور والفيديو — Lighting Plan

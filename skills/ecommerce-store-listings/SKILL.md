@@ -4,7 +4,7 @@ description: "E-commerce Store & Listings. متجر يبيع: أوصاف منت�
 metadata:
   superskill: 90
   title_ar: المتجر الإلكتروني وأوصاف المنتجات
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 90 · المتجر الإلكتروني وأوصاف المنتجات — E-commerce Store & Listings

@@ -4,7 +4,7 @@ description: "Data in Motion. رسوم بيانية متحركة للفيديو 
 metadata:
   superskill: 07
   title_ar: بيانات متحركة
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 07 · بيانات متحركة — Data in Motion

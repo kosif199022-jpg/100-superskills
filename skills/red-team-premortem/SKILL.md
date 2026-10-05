@@ -4,7 +4,7 @@ description: "Red Team & Pre-mortem. هجوم منظّم على أي خطة أو
 metadata:
   superskill: 97
   title_ar: الفريق الأحمر وتشريح ما قبل الفشل
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 97 · الفريق الأحمر وتشريح ما قبل الفشل — Red Team & Pre-mortem

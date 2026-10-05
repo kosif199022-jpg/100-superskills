@@ -4,7 +4,7 @@ description: "Invoices, Quotes & Contracts. وثائق أعمال جاهزة: ف
 metadata:
   superskill: 86
   title_ar: الفواتير والعروض والعقود
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 86 · الفواتير والعروض والعقود — Invoices, Quotes & Contracts

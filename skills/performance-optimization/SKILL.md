@@ -4,7 +4,7 @@ description: "Performance Optimization. تسريع المواقع والتطبي
 metadata:
   superskill: 67
   title_ar: تحسين الأداء
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 67 · تحسين الأداء — Performance Optimization

@@ -4,7 +4,7 @@ description: "Genius Council Decisions. قرار بآراء مستقلة: اخت
 metadata:
   superskill: 96
   title_ar: مجلس العباقرة للقرارات
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 96 · مجلس العباقرة للقرارات — Genius Council Decisions

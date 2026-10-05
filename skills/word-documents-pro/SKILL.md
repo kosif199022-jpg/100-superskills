@@ -4,7 +4,7 @@ description: "Word Documents Pro. مستندات Word كاملة التنسيق:
 metadata:
   superskill: 39
   title_ar: مستندات وورد الاحترافية
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 39 · مستندات وورد الاحترافية — Word Documents Pro

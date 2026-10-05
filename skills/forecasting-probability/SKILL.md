@@ -4,7 +4,7 @@ description: "Forecasting & Probability. تقدير «ما احتمال؟» بط
 metadata:
   superskill: 48
   title_ar: التوقع والاحتمالات
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 48 · التوقع والاحتمالات — Forecasting & Probability

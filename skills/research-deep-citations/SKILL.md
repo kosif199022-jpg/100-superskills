@@ -4,7 +4,7 @@ description: "Deep Research with Citations. بحث متعدد المصادر ع�
 metadata:
   superskill: 50
   title_ar: البحث العميق بالمصادر
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 50 · البحث العميق بالمصادر — Deep Research with Citations

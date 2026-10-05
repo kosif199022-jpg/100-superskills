@@ -4,7 +4,7 @@ description: "Market & Competitor Research. صورة سوق قابلة للقر�
 metadata:
   superskill: 89
   title_ar: بحث السوق والمنافسين
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 89 · بحث السوق والمنافسين — Market & Competitor Research

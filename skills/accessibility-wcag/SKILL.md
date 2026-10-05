@@ -4,7 +4,7 @@ description: "Accessibility (WCAG 2.2). تدقيق وإصلاح الإتاحة: 
 metadata:
   superskill: 68
   title_ar: الإتاحة WCAG
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 68 · الإتاحة WCAG — Accessibility (WCAG 2.2)

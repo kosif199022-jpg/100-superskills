@@ -4,7 +4,7 @@ description: "AI Art Style Library. قاموس أساليب لتوليد الص�
 metadata:
   superskill: 20
   title_ar: مكتبة الأساليب الفنية للتوليد
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 20 · مكتبة الأساليب الفنية للتوليد — AI Art Style Library

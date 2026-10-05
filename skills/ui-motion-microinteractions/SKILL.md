@@ -4,7 +4,7 @@ description: "UI Motion & Microinteractions. حركة واجهات بمستوى 
 metadata:
   superskill: 08
   title_ar: موشن الواجهات والتفاعلات الدقيقة
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 08 · موشن الواجهات والتفاعلات الدقيقة — UI Motion & Microinteractions

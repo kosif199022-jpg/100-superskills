@@ -4,7 +4,7 @@ description: "Product Photos & Mockups. صور منتجات للمتاجر وا�
 metadata:
   superskill: 21
   title_ar: صور المنتجات والموك-أب
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 21 · صور المنتجات والموك-أب — Product Photos & Mockups

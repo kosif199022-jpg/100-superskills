@@ -4,7 +4,7 @@ description: "Edit Plan & Captions. خطة مونتاج احترافية لأي 
 metadata:
   superskill: 25
   title_ar: خطة المونتاج والترجمة
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 25 · خطة المونتاج والترجمة — Edit Plan & Captions
