@@ -25,10 +25,13 @@
 | 20 | 106 الصوت والترجمة | `extract_audio_data.py` + `captions_pages.py` + رندر القالبين | 180 إطار بيانات (16 حزمة)، 3 صفحات ترجمة + SRT/VTT/ASS، وقالب الترجمة بإبراز الكلمة وقالب الصوت التفاعلي صُوّرا وجُمّعا إلى mp4 |
 | 21 | 107 النموذج المالي | `model_builder.py` → `xlsx_recalc.py` → `model_audit.py` | 8 أوراق و248 صيغة؛ LibreOffice أعاد الحساب (موجود على الجهاز) بلا أخطاء؛ Checks = OK وBS_check/CF_check صفر في كل الفترات؛ التدقيق PASS بلا أرقام مدفونة |
 | 22 | 108 أتمتة إكسل | `lambda_library.py`, `formula_translate.py` | 18 دالة LAMBDA مسمّاة مع Docs؛ الترجمة لفّت ARRAYFORMULA وحذّرت من المراجع الهيكلية وDAY(b−a) وLET في Lark |
+| 23 | الفهرس الموحّد | `python tools/advanced_index.py` | درّج 15,122 مهارة بمُدرِّج أدلة v2 (توزيع الجودة 5:533 · 4:3,008 · 3:5,569 · 2:5,999 · 1:13)، و70,662 صفاً (مهارة، وسم) بدرجة مركبة؛ الست بطاقات اليدوية تتقدّم على المُدرِّج؛ view `advanced_skill` وجدول `skill_tag` في SQLite يعملان بالاستعلامات المذكورة في التقرير |
+| 24 | ضبط الترتيب | `python tools/advanced_index.py --from-cache` | إعادة الترتيب من البطاقات المخبّأة بلا قراءة الأطلس؛ بوابة صلة 3/k أزالت الدخلاء (zoom-sdk، markitdown) من قوائم الوسوم |
 
 ## ما لم يُختبر هنا (قل «not-executed» حتى يُشغَّل)
 - السكربتات داخل claude.ai أو ChatGPT (المهارات هناك منهجيات؛ السكربتات تحتاج بيئة تنفيذ).
 - `resolve_pipeline.py` ضد DaVinci Resolve Studio حقيقي (الوضع اليدوي فقط هو المختبر).
+- مُدرِّج الأدلة يقيس الملموسية لا صحة المحتوى؛ ملف مفصّل خاطئ قد ينال 4/5.
 - `capture.py` على Linux/macOS بلا Edge (المسار البديل: `python -m playwright install chromium`).
 - دقة البرومبتات على المولّدات نفسها (Midjourney وVeo…) تحتاج توليداً فعلياً ومراجعة بصرية.
 

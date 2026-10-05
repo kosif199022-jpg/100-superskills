@@ -238,6 +238,8 @@ def render_readme(records: list[dict]) -> str:
     out += ["## الفهرس العميق", "",
             "`DEEP-INDEX.md` قراءة كاملة لنص كل مهارة من الـ15,122 (15.1 مليون كلمة): توزيع المجالات بكثافة الذكر، والأدوات الأكثر ذكراً، ولغات السكربتات. "
             "البحث النصي الكامل عبر `tools/atlas-deep.sqlite` (FTS5) و`tools/atlas-deep.json` (مرفقان بالإصدار على GitHub لحجمهما)؛ يُعاد بناؤهما بـ `python tools/deep_index.py`.", "",
+        "`ADVANCED-INDEX.md` الفهرس الموحّد: يدمج كثافة الوسوم مع تدريج أدلة لكل مهارة من نصها الكامل (خصوصية/إجرائية/اكتمال/أمان 1–5 مع سبب مُعدَّد وأعلام خطر) ومع خريطة المهارات الخارقة الـ108 إلى مصادرها، بدرجة مركبة لكل (مهارة، وسم) وأفضل 10 لكل وسم بعد إزالة التكرار. "
+        "`DEEP-READ.md` بطاقة لكل مهارة (15,122) مرتبة بالمجال. يُبنيان بـ `python tools/advanced_index.py` (أو `--from-cache` لإعادة الترتيب فقط)، والاستعلام عبر view باسم `advanced_skill` وجدول `skill_tag` في SQLite.", "",
             "## كيف بُنيت", "",
             "1. `tools/catalog.py` قرأ كل ملفات SKILL.md في الأطلس المحلي وأخرج فهرساً (الاسم، والوصف، والترخيص، والمصدر).",
             "2. `tools/data_*.py` تعريفات المئة مهارة: الوصف، والمحفّزات، وخط الإنتاج، وبوابات الجودة، والمخرجات، وكلمات المطابقة.",
@@ -356,7 +358,7 @@ def main() -> None:
                     z.write(p, f"{s['slug']}/{p.relative_to(sdir).as_posix()}")
     with zipfile.ZipFile(DIST / "100-superskills-claude-code.zip", "w", zipfile.ZIP_DEFLATED) as z:
         for p in ROOT.rglob("*"):
-            if p.is_file() and "dist" not in p.parts and "__pycache__" not in p.parts and p.name != "atlas-catalog.json" and not p.name.startswith("atlas-deep"):
+            if p.is_file() and "dist" not in p.parts and ".git" not in p.parts and "__pycache__" not in p.parts and p.name != "atlas-catalog.json" and not p.name.startswith("atlas-deep") and "deep-read" not in p.parts:
                 z.write(p, f"100-superskills/{p.relative_to(ROOT).as_posix()}")
     # ChatGPT custom GPT bundle: 10 knowledge files (10 skills each) + instructions
     gpt = DIST / "custom-gpt"

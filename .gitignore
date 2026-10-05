@@ -6,3 +6,5 @@ examples/*/frames/
 tools/atlas-deep.sqlite
 tools/atlas-deep.sqlite-journal
 tools/atlas-deep.json
+tools/atlas-deep-read.json
+tools/deep-read/cards.jsonl
