@@ -124,6 +124,21 @@ def image_code(path: Path, title: str) -> str:
             f"TITLE = {title!r}\nSIZE = ({w}, {h})\nIMAGE_B64 = (\n{body}\n)\n")
 
 
+def enlarge(im: Image.Image, target: int = 3840) -> tuple[Image.Image, int]:
+    """A high-resolution copy of a raster picture with its own colours: a whole-number Lanczos enlargement (the
+    pixel grid stays regular) and a gentle unsharp mask to keep edges crisp. Colours are not simplified."""
+    import cv2
+    rgba = np.ascontiguousarray(np.asarray(im.convert("RGBA")))
+    h, w = rgba.shape[:2]
+    k = max(1, round(target / max(w, h)))
+    if k == 1:
+        return Image.fromarray(rgba, "RGBA"), 1
+    big = cv2.resize(rgba, (w * k, h * k), interpolation=cv2.INTER_LANCZOS4)
+    rgb = big[..., :3]
+    big[..., :3] = cv2.addWeighted(rgb, 1.35, cv2.GaussianBlur(rgb, (0, 0), .6 * k), -.35, 0)
+    return Image.fromarray(big, "RGBA"), k
+
+
 def risky(code: str) -> list[str]:
     if code.lstrip().startswith("<"):
         return []                                         # SVG is data, not code
@@ -339,13 +354,25 @@ class Studio:
         self.disp[:] = BACKDROP
         self.refresh_native()
 
-    def refresh_native(self):
+    def refresh_native(self, final: bool = False):
+        """Show the native canvas fitted to the window the way image viewers do: shrinking averages the pixels
+        (no jagged edges), small pictures zoom by whole numbers (crisp pixels). Very large pictures use the fast
+        nearest-pixel view while drawing and the smooth one at the end."""
+        import cv2
         nv = self.native
-        sub = nv["canvas"][nv["map"]].astype(np.float32)
-        a = sub[:, 3:4] / 255
-        rgb = sub[:, :3] * a + R.rgb(PAPER) * 255 * (1 - a)       # see-through pixels show the paper
-        self.disp[nv["oy"]:nv["oy"] + nv["dh"], nv["ox"]:nv["ox"] + nv["dw"]] = \
-            (rgb + .5).astype(np.uint8).reshape(nv["dh"], nv["dw"], 3)
+        if nv["w"] * nv["h"] <= 4_000_000 or final:
+            can = nv["canvas"].reshape(nv["h"], nv["w"], 4).astype(np.float32)
+            a = can[..., 3:4] / 255
+            rgb = can[..., :3] * a + R.rgb(PAPER) * 255 * (1 - a)       # see-through pixels show the paper
+            if (nv["dw"], nv["dh"]) != (nv["w"], nv["h"]):
+                interp = cv2.INTER_AREA if nv["f"] < 1 else cv2.INTER_NEAREST if nv["f"] >= 2 else cv2.INTER_CUBIC
+                rgb = cv2.resize(rgb, (nv["dw"], nv["dh"]), interpolation=interp)
+            view = np.clip(rgb + .5, 0, 255).astype(np.uint8)
+        else:
+            sub = nv["canvas"][nv["map"]].astype(np.float32)
+            a = sub[:, 3:4] / 255
+            view = (sub[:, :3] * a + R.rgb(PAPER) * 255 * (1 - a) + .5).astype(np.uint8).reshape(nv["dh"], nv["dw"], 3)
+        self.disp[nv["oy"]:nv["oy"] + nv["dh"], nv["ox"]:nv["ox"] + nv["dw"]] = view
         self.photo.paste(Image.fromarray(self.disp))
 
     def start_exact(self, src: Path, name: str):
@@ -484,6 +511,7 @@ class Studio:
             Image.fromarray(self.disp).save(OUT / f"{self.out_name()}_{self.W}x{self.H}.png")
         else:
             nv = self.native
+            self.refresh_native(final=True)
             img = nv["canvas"].reshape(nv["h"], nv["w"], 4)
             Image.fromarray(img, "RGBA").save(OUT / f"{self.out_name()}_exact.png")
             if self.reference is not None and self.reference.shape == img.shape:
@@ -725,14 +753,23 @@ class Studio:
             t = time.perf_counter()
             try:
                 if self.source[0] == "image":
-                    import vector_scene
                     import vectorize as V
                     src = self.source[1]
-                    data = V.trace(src)
-                    V.to_svg(data, OUT / f"{name}.svg", scale=2)
-                    R.render_image(vector_scene.build(data), scale=3.2, ss=2, rolloff=1.0).save(p)
-                    msg = (f"النسخة المطابقة محفوظة بدقتها الأصلية: out/{name}_exact.png   ·   ونسخة متجهة "
-                           f"للتكبير بلا حدود (ألوانها مبسّطة): out/{name}.svg و {p.name}")
+                    im = Image.open(src)
+                    im.load()
+                    if V.looks_like_photo(np.asarray(im.convert("RGBA"))):
+                        big, k = enlarge(im)                 # photos: the exact image itself, enlarged, true colours
+                        pk = OUT / f"{name}_x{k}.png"
+                        big.save(pk)
+                        msg = (f"✅ تكبير ×{k} من الصورة المطابقة نفسها بألوانها الأصلية ({big.width}×{big.height}): "
+                               f"out/{pk.name}   ·   والأصل المطابق: out/{name}_exact.png")
+                    else:                                    # logos and flat art: vector stays sharp at any size
+                        import vector_scene
+                        data = V.trace(src)
+                        V.to_svg(data, OUT / f"{name}.svg", scale=2)
+                        R.render_image(vector_scene.build(data), scale=3.2, ss=2, rolloff=1.0).save(p)
+                        msg = (f"✅ نسخة متجهة حادة بأي حجم: out/{name}.svg و {p.name}   ·   "
+                               f"والأصل المطابق: out/{name}_exact.png")
                 elif self.source[0] == "code" or load(name) is None:
                     code = self.source[1] if self.source[0] == "code" else scene_file(name)
                     tmp = Path(tempfile.mkdtemp(prefix="kosif_exp_"))
@@ -742,8 +779,14 @@ class Studio:
                                    capture_output=True)
                     info = json.loads((tmp / "done.json").read_text(encoding="utf-8"))
                     shutil.rmtree(tmp, ignore_errors=True)
-                    if info.get("raster"):
-                        msg = f"الكود يرسم صورة نقطية (raster) فحُفظت بدقتها الأصلية: {p}"
+                    if info.get("raster"):                  # raster result: keep it exact, and enlarge it faithfully
+                        exact_p = OUT / f"{name}_original.png"
+                        Path(p).replace(exact_p)
+                        big, k = enlarge(Image.open(exact_p))
+                        pk = OUT / f"{name}_x{k}.png"
+                        big.save(pk)
+                        msg = (f"✅ ناتج الكود بدقته الأصلية: out/{exact_p.name}   ·   وتكبير ×{k} بألوانه الأصلية "
+                               f"({big.width}×{big.height}): out/{pk.name}")
                     else:
                         msg = f"تم التصدير 3840×2560 بلا فقد في الجودة في {time.perf_counter() - t:.0f} ث: {p}"
                 else:
