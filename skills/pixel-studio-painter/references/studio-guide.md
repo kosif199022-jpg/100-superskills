@@ -126,8 +126,9 @@ what you want changed, e.g. "make the shirt red". The studio copies **one packag
 The original image is **not** inside the package (an AI could not read megabytes of base64); the program holds a
 key `<<KOSIF:ORIGINAL:…>>` instead, and the original's bytes stay in `code/originals/`. Paste the package into
 Claude, ChatGPT or any AI, paste the program it returns into the code panel, press ▶: the studio puts the original
-back in place of the key, runs the program, paints the original first and then the edit. Press 🧩 again on the
-result to continue editing. `python edit_pack.py photo.jpg "make the shirt red"` prints the same package.
+back in place of the key, runs the program, paints the original first and then the edit. You can paste the AI's
+whole reply (explanations included): the code block is taken out of it. Press 🧩 again on the result to continue
+editing: it always works on what is on the canvas (an opened image, a code result or a drawn scene). `python edit_pack.py photo.jpg "make the shirt red"` prints the same package.
 
 ### Safety
 

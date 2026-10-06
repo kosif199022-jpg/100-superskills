@@ -27,7 +27,7 @@ dict(n="109", slug="pixel-studio-painter", ar="استوديو الرسم بال�
      "لتعديل صورة موجودة بأي ذكاء اصطناعي: زر «🧩 تعديل بالذكاء» (scripts/edit_pack.py) ينسخ حزمة واحدة: تعليمات، ووصف الصورة "
      "(طبقات الألوان بمواضعها)، وطلب المستخدم، وبرنامج Pillow صغير فيه مفتاح <<KOSIF:ORIGINAL:…>> بدل الصورة وأدوات recolor/adjust/tint/"
      "paint/write/erase/flip. يكتب الذكاء الاصطناعي التعديل بين # EDITS START و# EDITS END ويعيد البرنامج كاملاً؛ الاستوديو يعيد الأصل مكان "
-     "المفتاح ويرسم الأصل ثم التعديل فوقه. تفاصيل الدور في references/drawing-guide.md §7.",
+     "المفتاح ويرسم الأصل ثم التعديل فوقه؛ يُستخرج الكود من ردّ الذكاء الاصطناعي ولو أحاطه شرح، و🧩 يعمل دائماً على ما في اللوحة. تفاصيل الدور في references/drawing-guide.md §7.",
      "للواقعية ثلاثية الأبعاد (فكرة HyperFrames): اكتب صفحة HTML بـ Three.js بالعقد window.__ready/render(t)؛ scripts/html_render.py "
      "يرسم إطاراً حتمياً في Edge الخفي، وrunner.py (نوع html) يرسمه بيكسلاً ببيكسل ويعطي كوده؛ scripts/film.py drawing/animate يصنع MP4 بـ ffmpeg. "
      "الموجّه في references/drawing-guide.md يربط كل طلب بمساره.",
@@ -39,7 +39,7 @@ dict(n="109", slug="pixel-studio-painter", ar="استوديو الرسم بال�
      "اكتب المشاهد السينمائية في scripts/scenes/<name>.py: أشكال path وtube وellipse، وإضاءة glow وrim، ونص عربي "
      "مُشكَّل text، ثم grade وvignette وgrain. اختبر لقطة ثابتة بـ --render وافحصها قبل فتح النافذة.",
      "تحقّق في النهاية: شريط الحالة يعرض «✅ مطابقة للأصل 100%» وعدد البيكسل، ثم شغّل "
-     "python -m unittest discover -s tests من scripts/ (33 اختباراً)."],
+     "python -m unittest discover -s tests من scripts/ (34 اختباراً)."],
  gates=["الوضع المطابق ينتهي بصفر بيكسل مختلف عن الأصل (الدالة exact.mismatches == 0)، وإلا فلا تقل «مطابق».",
         "كود PIL يُرسم بدقته الأصلية بلا تحجيم، ويطابق final.png الذي أنتجه الكود نفسه.",
         "لا تشغيل لكود فيه أوامر خطرة بلا موافقة المستخدم الصريحة.",

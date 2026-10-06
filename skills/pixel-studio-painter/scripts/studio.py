@@ -152,6 +152,17 @@ def enlarge(im: Image.Image, target: int = 3840) -> tuple[Image.Image, int]:
     return Image.fromarray(big, "RGBA"), k
 
 
+def extract_code(text: str) -> str:
+    """The code in whatever was pasted: an AI reply with explanations around a ``` block, the whole 🧩 package
+    (its program is the block), or bare code with or without fences."""
+    text = text.strip()
+    blocks = re.findall(r"```[\w+-]*[ \t]*\r?\n(.*?)\r?\n[ \t]*```", text, re.S)
+    if blocks:
+        return next((b for b in blocks if "IMAGE_B64" in b or re.search(r"^\s*(import|from)\s", b, re.M)
+                     or b.lstrip().startswith("<")), blocks[-1]).strip()
+    return re.sub(r"^```[\w+-]*\s*\n|\n```\s*$", "", text).strip()
+
+
 def risky(code: str) -> list[str]:
     if code.lstrip().startswith("<"):
         return []                                         # SVG is data, not code
@@ -653,7 +664,7 @@ class Studio:
     def _clean_code(self, code: str) -> str | None:
         """Strip the ``` fences AIs add, and put the original image back in place of an edit-program key."""
         import edit_pack
-        code = re.sub(r"^```[\w-]*\s*\n|\n```\s*$", "", code.strip())
+        code = extract_code(code)
         try:
             code, restored = edit_pack.restore(code)
         except FileNotFoundError as e:
@@ -668,7 +679,17 @@ class Studio:
         the program is also opened in the panel. The AI returns the program with edits; ▶ draws the result."""
         from tkinter import filedialog, simpledialog
         import edit_pack
-        src = self.original if (self.source[0] == "image" and self.original and Path(self.original).exists()) else None
+        src = None
+        if self.source[0] == "image" and self.original and Path(self.original).exists():
+            src = Path(self.original)
+        elif self.reference is not None:                   # a code run (e.g. the previous edit): its final picture
+            SOURCES.mkdir(exist_ok=True)
+            src = SOURCES / time.strftime("edit_%Y%m%d_%H%M%S.png")
+            Image.fromarray(np.ascontiguousarray(self.reference)).convert("RGB").save(src)
+        elif self.drawn > 0:                               # a scene: the picture as drawn
+            SOURCES.mkdir(exist_ok=True)
+            src = SOURCES / f"{self.out_name()}_canvas.png"
+            Image.fromarray(self.disp, "RGB").save(src)
         if src is None:
             p = filedialog.askopenfilename(title="اختر الصورة التي تريد تعديلها",
                                            filetypes=[("صور", " ".join("*" + e for e in IMAGE_TYPES)), ("الكل", "*.*")])

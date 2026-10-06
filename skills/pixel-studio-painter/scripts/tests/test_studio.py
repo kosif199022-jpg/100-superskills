@@ -430,6 +430,15 @@ class EditPack(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             edit_pack.restore('IMAGE_B64 = "<<KOSIF:ORIGINAL:0000000000000000>>"')
 
+    def test_code_is_extracted_from_an_ai_reply_or_the_whole_package(self):
+        import edit_pack
+        pack = edit_pack.package(self.tmp / "me.png", "me", "x")
+        self.assertTrue(studio.extract_code(pack).startswith("# -*- coding: utf-8 -*-"))      # the package itself
+        reply = "تفضل، هذا البرنامج بعد التعديل:\n\n```python\nimport io\nx = 1\n```\n\nغيّرت لون القميص."
+        self.assertEqual(studio.extract_code(reply), "import io\nx = 1")                      # explanations around
+        self.assertEqual(studio.extract_code("```\n<svg/>\n```"), "<svg/>")
+        self.assertEqual(studio.extract_code("  print(1)\n"), "print(1)")                    # bare code
+
     def test_edited_program_is_painted_by_the_runner_original_first(self):
         import edit_pack
         program, _ = edit_pack.edit_program(self.tmp / "me.png", "me")
