@@ -69,7 +69,9 @@ AI_PROMPT = """أريد كود صورة لبرنامج رسم اسمه KOSIF Stu
            shade(shape, (lx,ly), lit, dark)  تظليل حجم   noise(shape, amount, cell, seed, mode)  نسيج جلد/صخر/ماء/سحاب
            relief(shape, [(x,y,z,colour,strength),...], base, bump=..)  جسم مضاء فيزيائياً (الأهم للواقعية)
            water(area, lights, deep, sky)  سطح ماء يلمع   scales(shape, size, colour, alpha)  حراشف
-           grade(shadows, highlights, amount)  vignette(0.5)  grain(0.02)
+           relief(..., bumps=[(amp,cell),...], sss=5, roughness=.5)  جلد حي بتفاصيل متعددة
+           الكاميرا: defocus(2) بعد الخلفية، motion_blur(shape, 6, 104) للمطر، bloom(.72, 26, .5)، flare((x,y), "#ffb070", 110, 380, .45)،
+           chroma(1.4)، filmic(1.0, 1.08, 1.02) مع ROLLOFF = 1.0، ثم vignette(.55) وgrain(.018)
    للواقعية: كل جسم كبير relief بأضواء المشهد، والماء water، ثلاثة أضواء (بارد ودافئ ومحيط)، البعيد مموّه وأزرق، لا خطوط خارجية سوداء،
    ثم grade وvignette وgrain. اللوحة 1200×800، والأسماء كلها جاهزة بدون import.
 

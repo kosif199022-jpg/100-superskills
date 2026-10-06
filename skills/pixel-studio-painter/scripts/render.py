@@ -579,13 +579,17 @@ def _normals(h: np.ndarray, scale: float) -> np.ndarray:
     return n / np.linalg.norm(n, axis=-1, keepdims=True)
 
 
-def _lit(n: np.ndarray, box, ctx, lights, base, ambient, shininess, spec, fresnel, fres_col):
+def _lit(n: np.ndarray, box, ctx, lights, base, ambient, shininess, spec, fresnel, fres_col, sss: float = 0.0,
+         sss_col=None, rough: np.ndarray | None = None):
+    """Light a normal field. `sss` blurs the diffuse light under the surface (skin, flesh, wax) and tints it;
+    `rough` (0..1 per pixel) spreads the highlight where the surface is rough."""
+    import cv2
     x0, y0, x1, y1 = box
     s = ctx.scale
     X, Y = np.meshgrid((np.arange(x0, x1, dtype=np.float32) + .5) / s, (np.arange(y0, y1, dtype=np.float32) + .5) / s)
-    col = np.zeros(n.shape, np.float32)
     basec = ctx.paint(base, box)[..., :3]
-    col += basec * ambient
+    diffuse = np.zeros(n.shape, np.float32) + ambient
+    specular = np.zeros(n.shape, np.float32)
     V = np.array([0, 0, 1], np.float32)
     for lx, ly, lz, lc, strength in lights:
         L = np.stack([lx - X, ly - Y, np.full_like(X, lz)], -1)
@@ -593,9 +597,18 @@ def _lit(n: np.ndarray, box, ctx, lights, base, ambient, shininess, spec, fresne
         lam = np.clip((n * L).sum(-1), 0, 1)[..., None]
         H = L + V
         H /= np.linalg.norm(H, axis=-1, keepdims=True)
-        sp = np.clip((n * H).sum(-1), 0, 1)[..., None] ** shininess
+        ndh = np.clip((n * H).sum(-1), 0, 1)[..., None]
+        shin = shininess if rough is None else shininess * (1 - 0.85 * rough[..., None])
+        sp = ndh ** shin
         c = rgb(lc)[None, None, :] * strength
-        col += basec * c * lam + c * sp * spec
+        diffuse = diffuse + c * lam
+        specular = specular + c * sp * spec
+    if sss:
+        r = max(0.5, sss * s)
+        soft = cv2.GaussianBlur(diffuse, (0, 0), r)
+        tint = rgb(sss_col)[None, None, :] if sss_col else 1.0
+        diffuse = 0.45 * diffuse + 0.55 * soft * tint
+    col = basec * diffuse + specular
     if fresnel:
         f = (1 - np.clip(n[..., 2], 0, 1))[..., None] ** 2
         col += rgb(fres_col)[None, None, :] * f * fresnel
@@ -604,7 +617,8 @@ def _lit(n: np.ndarray, box, ctx, lights, base, ambient, shininess, spec, fresne
 
 def relief(shape: Shape, lights: list, base="#808080", ambient: float = 0.22, bulge: float = 0.6, plateau: float = 0.5,
            shininess: float = 30.0, spec: float = 0.5, bump: float = 0.0, bump_cell: float = 12.0, seed: int = 1,
-           fresnel: float = 0.0, fres_col="#9fb6d8", soft: float = 1.0) -> Op:
+           fresnel: float = 0.0, fres_col="#9fb6d8", soft: float = 1.0, bumps: list | None = None, sss: float = 0.0,
+           sss_col=None, roughness: float = 0.0, profile: np.ndarray | None = None) -> Op:
     """A shape as a solid body: a height field rises from its edges (rounded sides, a flat top beyond `plateau`),
     optional bumps for skin or rock, and real lights: diffuse falls off with the surface angle, wet highlights
     appear where the surface faces between the light and the eye, Fresnel brightens grazing edges. This is what
@@ -622,10 +636,15 @@ def relief(shape: Shape, lights: list, base="#808080", ambient: float = 0.22, bu
         h = np.sqrt(1 - (1 - t) ** 2) * dmax * bulge
         if bump:
             h += (_value_noise(*h.shape, bump_cell * ctx.scale, seed, 4) - .5) * bump * ctx.scale * 2
+        for k, (amp, cell) in enumerate(bumps or []):             # detail at several scales: folds, pores, grit
+            h += (_value_noise(*h.shape, cell * ctx.scale, seed + 7 * (k + 1), 3) - .5) * amp * ctx.scale * 2
         if soft:
             h = cv2.GaussianBlur(h, (0, 0), soft * ctx.scale)
         n = _normals(h, ctx.scale)
-        col = _lit(n, box, ctx, lights, base, ambient, shininess, spec, fresnel, fres_col)
+        rough = None
+        if roughness:
+            rough = np.clip(_value_noise(*h.shape, bump_cell * 2 * ctx.scale, seed + 99, 3) * roughness * 1.6, 0, 1).astype(np.float32)
+        col = _lit(n, box, ctx, lights, base, ambient, shininess, spec, fresnel, fres_col, sss, sss_col, rough)
         ctx.blend(box, m, np.concatenate([col, np.ones_like(col[..., :1])], -1), 1.0, "normal")
     return op
 
@@ -662,6 +681,101 @@ def water(area: Shape, lights: list, deep="#0a1118", sky="#2a3a4c", cell: float 
             c = rgb(lc)[None, None, :] * strength
             col += c * sp * spec + base * c * lam * .5
         ctx.blend(box, m, np.concatenate([col, np.ones_like(col[..., :1])], -1), 1.0, "normal")
+    return op
+
+
+def _blur_canvas(c: np.ndarray, r: float) -> np.ndarray:
+    import cv2
+    return cv2.GaussianBlur(c, (0, 0), r) if r >= 0.3 else c
+
+
+def defocus(radius: float, shape: Shape | None = None, soft: float = 30.0) -> Op:
+    """Depth of field: everything painted so far goes out of focus by `radius` (scene px). Call it after the
+    background steps and before the subject, so the subject stays sharp. With `shape`, only inside it (soft edge)."""
+    def op(ctx: Ctx):
+        import cv2
+        blurred = _blur_canvas(ctx.canvas, radius * ctx.scale)
+        if shape is None:
+            ctx.canvas[:] = blurred
+            return
+        box = (0, 0, ctx.W, ctx.H)
+        m = cv2.GaussianBlur(ctx.mask(shape, box), (0, 0), max(0.5, soft * ctx.scale))[..., None]
+        ctx.canvas[:] = ctx.canvas * (1 - m) + blurred * m
+    return op
+
+
+def motion_blur(shape: Shape, length: float, angle: float = 90.0, mix: float = 1.0) -> Op:
+    """Streak what is inside the shape along `angle` (degrees, 90 = downwards) by `length` scene px: rain, spray,
+    a wing beat."""
+    def op(ctx: Ctx):
+        import cv2
+        box = ctx.bbox(shape, length * ctx.scale + 2)
+        if not box:
+            return
+        x0, y0, x1, y1 = box
+        L = max(3, int(length * ctx.scale) | 1)
+        k = np.zeros((L, L), np.float32)
+        a = math.radians(angle)
+        cx = cy = L // 2
+        for t in np.linspace(-L / 2, L / 2, L * 2):
+            x, y = int(round(cx + t * math.cos(a))), int(round(cy + t * math.sin(a)))
+            if 0 <= x < L and 0 <= y < L:
+                k[y, x] = 1
+        k /= k.sum()
+        reg = ctx.canvas[y0:y1, x0:x1]
+        streaked = cv2.filter2D(reg, -1, k, borderType=cv2.BORDER_REFLECT)
+        m = ctx.mask(shape, box)[..., None] * mix
+        reg[:] = reg * (1 - m) + streaked * m
+    return op
+
+
+def bloom(threshold: float = 0.75, radius: float = 30.0, strength: float = 0.6, tint="#ffffff") -> Op:
+    """Highlight bloom: light above `threshold` spills softly into its surroundings, as it does in a lens."""
+    def op(ctx: Ctx):
+        hi = np.clip(ctx.canvas - threshold, 0, None)
+        ctx.canvas += _blur_canvas(hi, radius * ctx.scale) * strength * rgb(tint)[None, None, :]
+        ctx.canvas += _blur_canvas(hi, radius * 3 * ctx.scale) * strength * 0.5 * rgb(tint)[None, None, :]
+    return op
+
+
+def flare(centre: Pt, colour="#ffb070", size: float = 120.0, streak: float = 420.0, strength: float = 0.6,
+          ghosts: int = 3) -> Op:
+    """An anamorphic lens flare from a bright point: a soft core, a horizontal streak, and faint ghost discs mirrored
+    through the picture centre."""
+    cx, cy = centre
+    ops = [glow(ellipse(cx, cy, size * .5, size * .5), colour, size * .6, strength),
+           fill(ellipse(cx, cy, streak, size * .09), colour, strength * .45, blur=size * .12, mode="add"),
+           fill(ellipse(cx, cy, streak * .55, size * .04), "#ffffff", strength * .5, blur=size * .05, mode="add")]
+    for k in range(1, ghosts + 1):
+        t = 1 + k * .55
+        gx, gy = W0 / 2 + (cx - W0 / 2) * (1 - t), H0 / 2 + (cy - H0 / 2) * (1 - t)
+        ops.append(fill(ellipse(gx, gy, size * (.25 + .2 * k), size * (.25 + .2 * k)), colour, strength * .12, blur=size * .1, mode="add"))
+    return lambda ctx: [o(ctx) for o in ops]
+
+
+def chroma(amount: float = 1.5) -> Op:
+    """Chromatic fringing: red and blue drift apart toward the frame edges, as in a real lens."""
+    def op(ctx: Ctx):
+        import cv2
+        c = ctx.canvas
+        H, W = c.shape[:2]
+        cx, cy = W / 2, H / 2
+        for ch, k in ((0, 1 + amount * ctx.scale / max(W, H) * 2), (2, 1 - amount * ctx.scale / max(W, H) * 2)):
+            M = np.array([[k, 0, cx * (1 - k)], [0, k, cy * (1 - k)]], np.float32)
+            c[..., ch] = cv2.warpAffine(c[..., ch], M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+    return op
+
+
+def filmic(exposure: float = 1.0, contrast: float = 1.05, saturation: float = 1.0, lift: float = 0.0) -> Op:
+    """Filmic tone mapping (ACES-style curve): highlights roll off like film, blacks stay deep, colours stay in
+    gamut. Use with ROLLOFF = 1.0 in the scene."""
+    def op(ctx: Ctx):
+        x = np.clip(ctx.canvas * exposure, 0, None)
+        y = (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14)
+        lum = (y @ np.array([.2126, .7152, .0722], np.float32))[..., None]
+        y = lum + (y - lum) * saturation
+        y = (y - 0.5) * contrast + 0.5 + lift
+        ctx.canvas[:] = np.clip(y, 0, 1)
     return op
 
 

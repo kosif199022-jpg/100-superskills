@@ -78,6 +78,18 @@ class Renderer(unittest.TestCase):
             self.assertGreater(np.abs(im - plain).mean(), 1.0)
             self.assertGreater(len(np.unique(im[70:130, 100:200].reshape(-1, 3), axis=0)), 4)
 
+    def test_camera_ops_run_and_change_the_picture(self):
+        base = [R.Step("b", [R.fill(R.rect(0, 0, 1200, 800), R.lin((0, 0), (0, 800), [(0, "#102030"), (1, "#405060")])),
+                             R.fill(R.ellipse(600, 400, 120, 120), "#ffffff")])]
+        plain = np.asarray(R.render_image(base, .25, rolloff=1)).astype(int)
+        for op in (R.defocus(3), R.motion_blur(R.rect(0, 0, 1200, 800), 8, 104), R.bloom(.6, 20, .8),
+                   R.flare((600, 400), "#ffb070", 100, 300, .6), R.chroma(3), R.filmic(1.2, 1.1, 1.1)):
+            im = np.asarray(R.render_image(base + [R.Step("c", [op])], .25, rolloff=1)).astype(int)
+            self.assertGreater(np.abs(im - plain).mean(), 0.05)
+        lit = R.render_image([R.Step("r", [R.relief(R.ellipse(600, 400, 300, 200), [(300, 100, 400, "#ffffff", 1.0)], "#808080",
+                                                      bumps=[(2, 20), (.5, 4)], sss=4, roughness=.5)])], .25, rolloff=1)
+        self.assertGreater(len(np.unique(np.asarray(lit)[70:130, 100:200].reshape(-1, 3), axis=0)), 30)
+
     def test_reveal_order_is_a_permutation_for_every_order(self):
         idx = np.arange(0, 12000, 7, dtype=np.int32)
         for order in ("sweep", "grow", "rise", "down", "left", "right", "sparkle"):

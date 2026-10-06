@@ -36,6 +36,8 @@
 - `relief(shape, lights, base, ambient, bulge, plateau, shininess, spec, bump, bump_cell, seed, fresnel)` **جسم مضاء فيزيائياً**: ارتفاع يرتفع من الحواف، وأضواء حقيقية (x, y, ارتفاع, لون, قوة) بانتشار ولمعان مبلّل وفرينل. هذا ما يحوّل الكتلة المسطّحة إلى حجم. `bump` نتوءات الجلد والصخر.
 - `water(area, lights, deep, sky, cell, stretch, height, seed, shininess, spec)` **سطح ماء**: موج كحقل ارتفاع، ولمعات كل ضوء على وجوه الموج.
 - `scales(shape, size, colour, alpha, width)` حراشف وقراميد وجلد سمك
+- **الكاميرا** (تُطبَّق على ما رُسم حتى الآن): `defocus(radius)` عمق مجال (بعد الخلفية وقبل البطل)، `motion_blur(shape, length, angle)` مطر ورذاذ متحرك، `bloom(threshold, radius, strength)` توهّج الأضواء، `flare(centre, colour, size, streak)` وهج عدسة، `chroma(amount)` تشتّت لوني عند الأطراف، `filmic(exposure, contrast, saturation)` منحنى فيلمي (مع `ROLLOFF = 1.0`).
+- في `relief`: `bumps=[(amp, cell), ...]` تفاصيل بعدة مقاييس (طيّات، مسام، حبيبات)، `sss` تشتّت تحت السطح للجلد واللحم، `roughness` خشونة تنشر اللمعان.
 - `glow(shape, colour, radius, alpha)` توهّج ضوئي · `rim(shape, (dx, dy), width, colour, alpha, soft)` **إضاءة حواف** من اتجاه
 - `text("نص", x, y, size, colour, anchor="mm", bold)` نص عربي مُشكَّل ومرتّب تلقائياً
 - `grade(shadows, highlights, amount, contrast)` · `vignette(strength)` · `grain(amount, seed)`
@@ -63,7 +65,7 @@
 6. **الحواف:** البعيد ناعم (`blur` 1–3)، القريب حاد. الخطوط الخارجية السوداء ممنوعة إلا في الأسلوب الكرتوني المقصود.
 7. **التكوين:** قطري واحد قوي بين البطل والخصم، تباين مقياس، فراغ هادئ حول الحدث، وإطار 16:9 بأشرطة سوداء للسينما.
 8. **التشبّع كمقبض صوت:** أعلى تشبّع في النار والعين فقط؛ الباقي أقل.
-9. **اللمسات:** `grade` (ظلال باردة، أضواء دافئة) ثم `vignette` ثم `grain` خفيف. الحبيبات تجعل التدرّجات تبدو مصوّرة.
+9. **الكاميرا هي ما يجعل اللوحة تبدو مصوّرة:** `defocus` للخلفية، `motion_blur` للمطر، ثم `bloom` و`flare` من أقوى ضوء، `chroma` خفيف، `filmic`، `vignette`، `grain`. بهذا الترتيب.
 
 ## 4) حلقة العمل (لا تسليم بلا قياس)
 

@@ -51,6 +51,7 @@ metadata:
 في `scripts/` و`templates/` أدوات حتمية تعمل بـ Python 3.10+ (المكتبة القياسية ما لم يُذكر غير ذلك). شغّلها بدل التخمين؛ نجاح السكربت لا يعني نجاح المهمة، فراجع المخرج بعينك.
 
 - `scripts/exact.py` — Exact redraw: an image is painted from nothing, the way a painter works, and ends identical to the original,
+- `scripts/generate.py` — A photograph from a prompt: the studio cannot paint one from code, so it asks an image model, then draws the
 - `scripts/jev_client.py` — Jev, the fast judge: asks the live Jev service to choose between options, twice in parallel with the options in
 - `scripts/judge.py` — Does a rendered picture read as painted-realistic, or as a flat cartoon? Measured, not guessed.
 - `scripts/render.py` — KOSIF Studio renderer.
