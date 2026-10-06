@@ -4,7 +4,7 @@ description: "Curriculum & Course Builder. منهج تعلّم متكيّف لأ
 metadata:
   superskill: 91
   title_ar: بناء المناهج والدورات
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 91 · بناء المناهج والدورات — Curriculum & Course Builder

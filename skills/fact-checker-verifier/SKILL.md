@@ -4,7 +4,7 @@ description: "Fact-Checker & Verifier. فحص الادعاءات والأرقا�
 metadata:
   superskill: 98
   title_ar: مدقّق الحقائق والمُحقِّق
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 98 · مدقّق الحقائق والمُحقِّق — Fact-Checker & Verifier

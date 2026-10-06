@@ -4,7 +4,7 @@ description: "Newsletters & Email Marketing. رسائل تُفتح وتُقرأ:
 metadata:
   superskill: 79
   title_ar: النشرات والبريد التسويقي
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 79 · النشرات والبريد التسويقي — Newsletters & Email Marketing

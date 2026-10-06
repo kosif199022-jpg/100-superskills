@@ -4,7 +4,7 @@ description: "Pixel Art & Game Assets. سبرايتات بكسل آرت وورق
 metadata:
   superskill: 16
   title_ar: بكسل آرت وأصول الألعاب
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 16 · بكسل آرت وأصول الألعاب — Pixel Art & Game Assets

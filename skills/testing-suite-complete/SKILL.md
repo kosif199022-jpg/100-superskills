@@ -4,7 +4,7 @@ description: "Complete Testing Suite. اختبارات تثبت أن الكود 
 metadata:
   superskill: 62
   title_ar: منظومة الاختبارات الكاملة
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 62 · منظومة الاختبارات الكاملة — Complete Testing Suite

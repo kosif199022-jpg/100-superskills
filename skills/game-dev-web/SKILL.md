@@ -4,7 +4,7 @@ description: "Web Game Development. ألعاب متصفح كاملة: حلقة �
 metadata:
   superskill: 75
   title_ar: تطوير الألعاب للويب
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 75 · تطوير الألعاب للويب — Web Game Development

@@ -4,7 +4,7 @@ description: "Website & Design System. تصميم موقع كامل من اله�
 metadata:
   superskill: 52
   title_ar: تصميم المواقع ونظام التصميم
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 52 · تصميم المواقع ونظام التصميم — Website & Design System

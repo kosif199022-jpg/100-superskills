@@ -4,7 +4,7 @@ description: "Advanced Excel Automation. إكسل كمنصّة أتمتة: Power
 metadata:
   superskill: 108
   title_ar: أتمتة إكسل المتقدمة (Power Query وLAMBDA وDAX)
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 108 · أتمتة إكسل المتقدمة (Power Query وLAMBDA وDAX) — Advanced Excel Automation

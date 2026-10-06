@@ -4,7 +4,7 @@ description: "Diagrams & Architecture Drawings. مخططات Mermaid وSVG لت�
 metadata:
   superskill: 15
   title_ar: المخططات والرسوم الهندسية
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 15 · المخططات والرسوم الهندسية — Diagrams & Architecture Drawings

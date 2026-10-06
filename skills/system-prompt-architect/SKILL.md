@@ -4,7 +4,7 @@ description: "System Prompt Architect. برومبتات نظام لمساعدي�
 metadata:
   superskill: 27
   title_ar: مهندس برومبتات النظام
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 27 · مهندس برومبتات النظام — System Prompt Architect

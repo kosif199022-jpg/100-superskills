@@ -4,7 +4,7 @@ description: "Office Prompts Library. برومبتات جاهزة ومُفحوص
 metadata:
   superskill: 43
   title_ar: مكتبة برومبتات أوفيس
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 43 · مكتبة برومبتات أوفيس — Office Prompts Library

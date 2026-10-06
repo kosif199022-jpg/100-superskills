@@ -4,7 +4,7 @@ description: "Claude Animation Studio. يصنع فيديو أنيميشن كام
 metadata:
   superskill: 01
   title_ar: استوديو الأنيميشن بكلاود
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 01 · استوديو الأنيميشن بكلاود — Claude Animation Studio

@@ -4,7 +4,7 @@ description: "Database Schema & Migrations. تصميم قواعد بيانات �
 metadata:
   superskill: 55
   title_ar: مخطط قاعدة البيانات والترحيلات
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 55 · مخطط قاعدة البيانات والترحيلات — Database Schema & Migrations

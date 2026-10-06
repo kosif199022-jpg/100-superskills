@@ -4,7 +4,7 @@ description: "Motion Director Pro. منهج صناعة فيلم موشن حقي�
 metadata:
   superskill: 105
   title_ar: مخرج الموشن المحترف (فيلم لا شرائح)
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 105 · مخرج الموشن المحترف (فيلم لا شرائح) — Motion Director Pro

@@ -4,7 +4,7 @@ description: "Software Architecture & ADRs. تصميم أنظمة قبل الب�
 metadata:
   superskill: 74
   title_ar: هندسة البرمجيات والقرارات المعمارية
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 74 · هندسة البرمجيات والقرارات المعمارية — Software Architecture & ADRs

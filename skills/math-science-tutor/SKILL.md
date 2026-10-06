@@ -4,7 +4,7 @@ description: "Math & Science Tutor. شرح وحلّ خطوة بخطوة بالت
 metadata:
   superskill: 93
   title_ar: معلّم الرياضيات والعلوم
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 93 · معلّم الرياضيات والعلوم — Math & Science Tutor

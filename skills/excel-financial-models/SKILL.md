@@ -4,7 +4,7 @@ description: "Excel Financial Models. نماذج مالية احترافية: ا
 metadata:
   superskill: 37
   title_ar: النماذج المالية في إكسل
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 37 · النماذج المالية في إكسل — Excel Financial Models

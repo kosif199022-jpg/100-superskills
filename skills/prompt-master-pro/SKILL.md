@@ -4,7 +4,7 @@ description: "Prompt Master Pro. كتابة أي برومبت باحترافية
 metadata:
   superskill: 26
   title_ar: سيّد البرومبتات الاحترافي
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 26 · سيّد البرومبتات الاحترافي — Prompt Master Pro

@@ -4,7 +4,7 @@ description: "TypeScript & Node Pro. كود TypeScript صارم لـ Node وBun 
 metadata:
   superskill: 72
   title_ar: TypeScript وNode المحترف
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 72 · TypeScript وNode المحترف — TypeScript & Node Pro

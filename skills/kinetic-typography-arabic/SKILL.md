@@ -4,7 +4,7 @@ description: "Arabic Kinetic Typography. فيديوهات كلمات متحرك�
 metadata:
   superskill: 03
   title_ar: تايبوغرافي عربية متحركة
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 03 · تايبوغرافي عربية متحركة — Arabic Kinetic Typography

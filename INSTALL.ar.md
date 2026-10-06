@@ -16,6 +16,7 @@ claude --plugin-dir "C:\Users\اغنام الوادي\Desktop\الاداة\100-s
 - Python 3.10+ (موجود عندك 3.13).
 - للأنيميشن: `pip install playwright` ثم `python -m playwright install chromium` (أو استخدم Edge المثبت: السكربت يجرّبه أولاً)، وffmpeg في PATH (موجود عندك 9.0).
 - للإكسل: `pip install openpyxl`.
+- لاستوديو الرسم (109): `pip install pillow numpy opencv-python arabic-reshaper python-bidi` (وmatplotlib لكود matplotlib فقط).
 - لباقي السكربتات: المكتبة القياسية فقط.
 
 ## Claude Desktop و claude.ai

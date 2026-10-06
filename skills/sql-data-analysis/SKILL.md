@@ -4,7 +4,7 @@ description: "SQL & Data Analysis. استعلامات SQL صحيحة وسريع�
 metadata:
   superskill: 45
   title_ar: SQL وتحليل البيانات
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 45 · SQL وتحليل البيانات — SQL & Data Analysis

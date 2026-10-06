@@ -4,7 +4,7 @@ description: "Strategy & Decision Sensitivity. قرارات عالية الأث�
 metadata:
   superskill: 99
   title_ar: الاستراتيجية وحساسية القرار
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 99 · الاستراتيجية وحساسية القرار — Strategy & Decision Sensitivity

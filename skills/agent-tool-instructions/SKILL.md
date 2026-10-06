@@ -4,7 +4,7 @@ description: "Agent & Tool Instructions. برومبتات الوكلاء وأو�
 metadata:
   superskill: 28
   title_ar: تعليمات الوكلاء والأدوات
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 28 · تعليمات الوكلاء والأدوات — Agent & Tool Instructions

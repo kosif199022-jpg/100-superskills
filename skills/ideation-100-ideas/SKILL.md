@@ -4,7 +4,7 @@ description: "100-Ideas Generator. توليد أفكار بكمية ثم جود�
 metadata:
   superskill: 100
   title_ar: مولّد الأفكار: 100 فكرة
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 100 · مولّد الأفكار: 100 فكرة — 100-Ideas Generator

@@ -40,3 +40,5 @@
 python tools/build.py
 cd examples/demo2d && python ../../skills/claude-animation-studio/scripts/capture.py --html index.html
 ```
+| 25 | 109 استوديو الرسم: الاختبارات | `cd skills/pixel-studio-painter/scripts` ثم `python -m unittest discover -s tests` | 18/18: الثقوب وeven-odd، وأقواس SVG، والتدرّج الشفاف، والنص العربي، وترتيب الرسم، واستيراد SVG، والتتبّع (شعار وصورة)، والمطابقة التامة (صفر بيكسل مختلف)، وكود PIL بدقته الأصلية مطابقاً لناتجه، والكود المعطوب يُرجع الخطأ الحقيقي |
+| 26 | 109 النافذة الحية | `studio.py --image` و`--code` و`dragon_girl` مع لقطات للنافذة أثناء الرسم | مشهد الفتاة والتنين 15.3 ث (4.97 مليون بيكسل)؛ شعار في الوضع المطابق 6.3 ث و«✅ مطابقة للأصل 100%»؛ صورة 1254×1254 مطابقة؛ كود PIL في 25 خطوة بترتيب الكود |

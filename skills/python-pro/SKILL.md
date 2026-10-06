@@ -4,7 +4,7 @@ description: "Python Pro. كود Python إنتاجي: بنية حزمة، وtypi
 metadata:
   superskill: 71
   title_ar: بايثون المحترف
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 71 · بايثون المحترف — Python Pro

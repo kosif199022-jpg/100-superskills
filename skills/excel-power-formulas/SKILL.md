@@ -4,7 +4,7 @@ description: "Excel Power Formulas. حل أي مشكلة إكسل: صيغ حدي
 metadata:
   superskill: 36
   title_ar: إكسل: الصيغ والقوة
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 36 · إكسل: الصيغ والقوة — Excel Power Formulas

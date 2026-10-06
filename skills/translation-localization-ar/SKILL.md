@@ -4,7 +4,7 @@ description: "Arabic Translation & Localization. ترجمة عربي ↔ إنج�
 metadata:
   superskill: 78
   title_ar: الترجمة والتوطين العربي
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 78 · الترجمة والتوطين العربي — Arabic Translation & Localization

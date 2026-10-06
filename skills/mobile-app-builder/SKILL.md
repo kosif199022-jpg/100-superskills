@@ -4,7 +4,7 @@ description: "Mobile App Builder. تطبيقات جوال بـ Flutter أو Reac
 metadata:
   superskill: 57
   title_ar: تطبيقات الجوال
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 57 · تطبيقات الجوال — Mobile App Builder

@@ -4,7 +4,7 @@ description: "Prompt Injection Defense. تأمين تطبيقات النماذج
 metadata:
   superskill: 32
   title_ar: الدفاع ضد حقن البرومبت
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 32 · الدفاع ضد حقن البرومبت — Prompt Injection Defense

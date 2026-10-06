@@ -6154,5 +6154,62 @@
     "path": "1368-dynatrace/3120-dt-obs-aws/SKILL.md"
    }
   ]
+ },
+ {
+  "n": "109",
+  "slug": "pixel-studio-painter",
+  "ar": "استوديو الرسم بالبيكسل (KOSIF Studio)",
+  "en": "Pixel Studio Painter",
+  "desc": "برنامج رسم على سطح المكتب يرسم أي صورة أمامك بيكسلاً ببيكسل بترتيب الرسّام. يرسم كود أي ذكاء اصطناعي (SVG أو بايثون PIL أو matplotlib أو turtle أو مشهد KOSIF بالإضاءة والتوهّج)، ويسجّل أوامر PIL ليرسمها بترتيب الكود نفسه. يعيد رسم أي صورة مرفوعة من الصفر لتنتهي مطابقة للأصل تماماً (صفر بيكسل مختلف، ويتحقق بنفسه، ويختار Jev خطة الرسم للصور الفوتوغرافية)، أو يحوّلها إلى أشكال متجهة وSVG تُكبَّر بلا فقد. ويصدّر بدقة 3840×2560.",
+  "sources": [
+   {
+    "name": "akbun-draw-book-illustration",
+    "plugin": "1094-akbun-draw",
+    "license": "MIT",
+    "path": "1094-akbun-draw/2415-akbun-draw-book-illustration/SKILL.md"
+   },
+   {
+    "name": "blog-figure-svg",
+    "plugin": "1814-publishing-skills",
+    "license": "MIT-0",
+    "path": "1814-publishing-skills/4861-blog-figure-svg/SKILL.md"
+   },
+   {
+    "name": "svg-figure",
+    "plugin": "2657-figures",
+    "license": "BSD-3-Clause",
+    "path": "2657-figures/10113-svg-figure/SKILL.md"
+   },
+   {
+    "name": "svg-primitives",
+    "plugin": "2657-figures",
+    "license": "BSD-3-Clause",
+    "path": "2657-figures/10114-svg-primitives/SKILL.md"
+   },
+   {
+    "name": "raster-logo-svg",
+    "plugin": "2981-designer-skill",
+    "license": "MIT",
+    "path": "2981-designer-skill/12626-raster-logo-svg/SKILL.md"
+   },
+   {
+    "name": "9526-scene",
+    "plugin": "2460-pixel-art",
+    "license": "MIT",
+    "path": "2460-pixel-art/9526-scene/SKILL.md"
+   },
+   {
+    "name": "9527-sprite",
+    "plugin": "2460-pixel-art",
+    "license": "MIT",
+    "path": "2460-pixel-art/9527-sprite/SKILL.md"
+   },
+   {
+    "name": "akbun-draw-cartoon-b",
+    "plugin": "1094-akbun-draw",
+    "license": "MIT",
+    "path": "1094-akbun-draw/2417-akbun-draw-cartoon-b/SKILL.md"
+   }
+  ]
  }
 ]

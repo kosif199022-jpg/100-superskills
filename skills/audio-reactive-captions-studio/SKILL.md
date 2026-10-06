@@ -4,7 +4,7 @@ description: "Audio-Reactive & Animated Captions Studio. أنيميشن يتنف
 metadata:
   superskill: 106
   title_ar: استوديو الصوت التفاعلي والترجمة المتحركة
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 106 · استوديو الصوت التفاعلي والترجمة المتحركة — Audio-Reactive & Animated Captions Studio

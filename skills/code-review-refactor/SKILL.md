@@ -4,7 +4,7 @@ description: "Code Review & Refactoring. مراجعة صحة أولاً: الأ�
 metadata:
   superskill: 61
   title_ar: مراجعة الكود وإعادة الهيكلة
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 61 · مراجعة الكود وإعادة الهيكلة — Code Review & Refactoring

@@ -4,7 +4,7 @@ description: "Cinematic 3D Scene. مشاهد Three.js سينمائية داخل 
 metadata:
   superskill: 06
   title_ar: مشهد سينمائي ثلاثي الأبعاد
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 06 · مشهد سينمائي ثلاثي الأبعاد — Cinematic 3D Scene

@@ -4,7 +4,7 @@ description: "Backend & API Design. واجهات API متينة (REST أو Graph
 metadata:
   superskill: 54
   title_ar: تصميم الواجهات الخلفية وAPI
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 54 · تصميم الواجهات الخلفية وAPI — Backend & API Design

@@ -4,7 +4,7 @@ description: "2D Character Animation. شخصيات كرتونية متحركة �
 metadata:
   superskill: 04
   title_ar: تحريك الشخصيات 2D
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 04 · تحريك الشخصيات 2D — 2D Character Animation

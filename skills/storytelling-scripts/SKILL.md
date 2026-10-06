@@ -4,7 +4,7 @@ description: "Storytelling & Scripts. قصص وسكربتات بصراع حقي�
 metadata:
   superskill: 77
   title_ar: القصص والسكربتات
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 77 · القصص والسكربتات — Storytelling & Scripts

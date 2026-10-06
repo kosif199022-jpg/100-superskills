@@ -4,7 +4,7 @@ description: "RAG & Knowledge Base. بناء نظام أسئلة وأجوبة ع
 metadata:
   superskill: 31
   title_ar: قاعدة المعرفة وRAG
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 31 · قاعدة المعرفة وRAG — RAG & Knowledge Base

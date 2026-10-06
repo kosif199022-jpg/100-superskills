@@ -4,7 +4,7 @@ description: "Root-Cause Debugging. إصلاح أي خطأ من جذره: إعا
 metadata:
   superskill: 60
   title_ar: تصحيح الأخطاء من الجذر
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 60 · تصحيح الأخطاء من الجذر — Root-Cause Debugging

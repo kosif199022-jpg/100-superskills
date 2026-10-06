@@ -4,7 +4,7 @@ description: "Video Prompt Director. برومبتات فيديو لمنصات Ve
 metadata:
   superskill: 10
   title_ar: مخرج برومبتات الفيديو
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 10 · مخرج برومبتات الفيديو — Video Prompt Director

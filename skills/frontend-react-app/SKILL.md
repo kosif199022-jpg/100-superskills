@@ -4,7 +4,7 @@ description: "React Frontend App. تطبيقات واجهة حديثة بـ Reac
 metadata:
   superskill: 53
   title_ar: تطبيق واجهة React
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 53 · تطبيق واجهة React — React Frontend App

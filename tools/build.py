@@ -32,7 +32,7 @@ SKILLS = ROOT / "skills"
 DIST = ROOT / "dist"
 ATLAS_ROOT = Path(os.environ.get("KOSIF_ATLAS_SKILLS", str(ROOT.parent / "kosif-atlas" / "skills")))
 ATLAS_URL = "https://github.com/kosif199022-jpg/kosif-atlas/tree/main/skills/"
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 PERMISSIVE = ("MIT", "Apache", "BSD", "ISC", "CC0", "Unlicense", "MIT-0", "WTFPL", "0BSD", "Zlib")
 HANDWRITTEN_DIRS = ("scripts", "templates", "assets")
 HANDWRITTEN_REFS = ("motion-rules.md", "styles.md", "formula.md", "blindspot-questions.md", "platforms.md",
@@ -40,7 +40,7 @@ HANDWRITTEN_REFS = ("motion-rules.md", "styles.md", "formula.md", "blindspot-que
                     "color-grading-order.md", "resolve-api-map.md", "reasoning-patterns.md", "structured-output-ladder.md",
                     "model-guidance.md", "judge-design.md", "film-brief-template.md", "motion-floor.md",
                     "captions-rules.md", "model-conventions.md", "driver-trees.md", "power-query-recipes.md",
-                    "dax-patterns.md", "lambda-catalog.md", "formula-translation.md")
+                    "dax-patterns.md", "lambda-catalog.md", "formula-translation.md", "studio-guide.md")
 
 sys.path.insert(0, str(TOOLS))
 from data_a import A  # noqa: E402
@@ -48,8 +48,9 @@ from data_b import B  # noqa: E402
 from data_c import C  # noqa: E402
 from data_d import D  # noqa: E402
 from data_e import E  # noqa: E402
+from data_f import F  # noqa: E402
 
-ALL = A + B + C + D + E
+ALL = A + B + C + D + E + F
 assert len(ALL) >= 100, f"expected >= 100 skills, got {len(ALL)}"
 assert len({s["slug"] for s in ALL}) == len(ALL), "duplicate slug"
 
@@ -60,7 +61,8 @@ CATEGORIES = [
     ("أدوات Office والبيانات", "Office & Data", range(36, 51)),
     ("تصميم المواقع والبرمجة", "Web Design & Programming", range(51, 76)),
     ("الكتابة والصوت والأعمال والتعليم والقرار", "Writing, Audio, Business, Learning & Decisions", range(76, 101)),
-    ("الدفعة المتقدمة جداً: مونتاج وبرومبت وأنيميشن وإكسل (من قراءة المحتوى الكامل للأطلس)", "Ultra-Advanced: Editing, Prompts, Motion & Excel", range(101, 200)),
+    ("الدفعة المتقدمة جداً: مونتاج وبرومبت وأنيميشن وإكسل (من قراءة المحتوى الكامل للأطلس)", "Ultra-Advanced: Editing, Prompts, Motion & Excel", range(101, 109)),
+    ("الرسم بالبيكسل: كود أي ذكاء اصطناعي، وصور تُعاد مطابقة للأصل، ومشاهد متجهة", "Pixel Drawing Studio", range(109, 200)),
 ]
 
 
@@ -244,7 +246,7 @@ def render_readme(records: list[dict]) -> str:
             "1. `tools/catalog.py` قرأ كل ملفات SKILL.md في الأطلس المحلي وأخرج فهرساً (الاسم، والوصف، والترخيص، والمصدر).",
             "2. `tools/data_*.py` تعريفات المئة مهارة: الوصف، والمحفّزات، وخط الإنتاج، وبوابات الجودة، والمخرجات، وكلمات المطابقة.",
             "3. `tools/build.py` يطابق كل مهارة مع أقوى مهارات الأطلس مفتوحة الترخيص، ويكتب SKILL.md وreferences/sources.md، ويبني الحزم.",
-            "4. السكربتات في المهارات الرئيسية (01، 02، 09، 10، 26، 36) والدفعة المتقدمة (101–108) مكتوبة يدوياً ومُجرَّبة؛ انظر `TESTS.md`.",
+            "4. السكربتات في المهارات الرئيسية (01، 02، 09، 10، 26، 36) والدفعة المتقدمة (101–108) واستوديو الرسم (109) مكتوبة يدوياً ومُجرَّبة؛ انظر `TESTS.md`.",
             "5. الدفعة 101–108 بُنيت بعد قراءة المحتوى الكامل لأغنى 60 مصدراً في المونتاج والبرومبت والأنيميشن والإكسل (مقتطفاتها في `references/sources.md` لكل مهارة).", "",
             "## الترخيص", "",
             "تعريفات المهارات والسكربتات: MIT. مقتطفات `references/sources.md` تحمل تراخيص أصحابها (MIT/Apache/BSD) المذكورة بجوارها.", ""]
@@ -270,6 +272,7 @@ claude --plugin-dir "{ROOT}"
 - Python 3.10+ (موجود عندك 3.13).
 - للأنيميشن: `pip install playwright` ثم `python -m playwright install chromium` (أو استخدم Edge المثبت: السكربت يجرّبه أولاً)، وffmpeg في PATH (موجود عندك 9.0).
 - للإكسل: `pip install openpyxl`.
+- لاستوديو الرسم (109): `pip install pillow numpy opencv-python arabic-reshaper python-bidi` (وmatplotlib لكود matplotlib فقط).
 - لباقي السكربتات: المكتبة القياسية فقط.
 
 ## Claude Desktop و claude.ai
@@ -341,7 +344,7 @@ def main() -> None:
                        "Prompt Master Pro, Excel/Word/PowerPoint, web design, programming, business, learning and decisions. "
                        "Composed from the KOSIF Atlas (15,122 skills).",
         "author": {"name": "Kosif"},
-        "keywords": ["superskills", "animation", "prompts", "excel", "word", "web-design", "programming", "arabic", "kosif"]}, ensure_ascii=False, indent=2))
+        "keywords": ["superskills", "animation", "prompts", "excel", "word", "web-design", "programming", "arabic", "kosif", "pixel-drawing", "svg"]}, ensure_ascii=False, indent=2))
     write(ROOT / ".claude-plugin" / "marketplace.json", json.dumps({
         "name": "superskills", "owner": {"name": "Kosif"},
         "plugins": [{"name": "100-superskills", "source": "./", "description": "100 مهارة خارقة"}]}, ensure_ascii=False, indent=2))

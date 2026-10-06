@@ -4,7 +4,7 @@ description: "PDF Forms & Reports. كل ما يخص PDF: استخراج النص
 metadata:
   superskill: 42
   title_ar: ملفات PDF: النماذج والتقارير
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 42 · ملفات PDF: النماذج والتقارير — PDF Forms & Reports

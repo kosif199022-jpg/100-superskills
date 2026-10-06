@@ -4,7 +4,7 @@ description: "Prompt Architect for Reasoning Models. أعلى مستوى في ه
 metadata:
   superskill: 103
   title_ar: مهندس البرومبت لنماذج التفكير
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 103 · مهندس البرومبت لنماذج التفكير — Prompt Architect for Reasoning Models

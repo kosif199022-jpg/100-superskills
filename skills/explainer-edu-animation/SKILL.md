@@ -4,7 +4,7 @@ description: "Explainer Animation. فيديوهات شرح مبسّطة (علو�
 metadata:
   superskill: 05
   title_ar: أنيميشن تعليمي توضيحي
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 05 · أنيميشن تعليمي توضيحي — Explainer Animation

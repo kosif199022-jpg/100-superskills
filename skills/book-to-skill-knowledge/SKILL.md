@@ -4,7 +4,7 @@ description: "Book-to-Skill Knowledge Compiler. يحوّل كتاباً أو و�
 metadata:
   superskill: 95
   title_ar: من الكتاب إلى مهارة
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 95 · من الكتاب إلى مهارة — Book-to-Skill Knowledge Compiler

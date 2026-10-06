@@ -4,7 +4,7 @@ description: "Custom GPT & Claude Project Builder. يحوّل أي مهارة أ
 metadata:
   superskill: 35
   title_ar: بناء GPT مخصص ومشروع Claude
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 35 · بناء GPT مخصص ومشروع Claude — Custom GPT & Claude Project Builder

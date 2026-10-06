@@ -4,7 +4,7 @@ description: "Google Workspace Automation. أتمتة Sheets وDocs وSlides وD
 metadata:
   superskill: 41
   title_ar: أتمتة Google Workspace
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 41 · أتمتة Google Workspace — Google Workspace Automation

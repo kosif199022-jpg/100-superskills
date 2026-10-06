@@ -4,7 +4,7 @@ description: "Legacy Code Migration. نقل الأنظمة القديمة بأم
 metadata:
   superskill: 73
   title_ar: تحديث الكود القديم والترحيل
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 73 · تحديث الكود القديم والترحيل — Legacy Code Migration

@@ -4,7 +4,7 @@ description: "Excel Financial Model Architect. نماذج إكسل تصمد أم
 metadata:
   superskill: 107
   title_ar: مهندس النماذج المالية في إكسل
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 107 · مهندس النماذج المالية في إكسل — Excel Financial Model Architect

@@ -4,7 +4,7 @@ description: "Podcast Production. بودكاست من الفكرة إلى الن
 metadata:
   superskill: 81
   title_ar: إنتاج البودكاست
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 81 · إنتاج البودكاست — Podcast Production

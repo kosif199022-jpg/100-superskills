@@ -4,7 +4,7 @@ description: "Accounting, Journal Entries & IFRS. قيود يومية صحيحة
 metadata:
   superskill: 85
   title_ar: المحاسبة والقيود وIFRS
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 85 · المحاسبة والقيود وIFRS — Accounting, Journal Entries & IFRS

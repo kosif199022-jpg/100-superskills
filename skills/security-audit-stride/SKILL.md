@@ -4,7 +4,7 @@ description: "Security Audit (STRIDE). مراجعة أمنية دفاعية: ن�
 metadata:
   superskill: 63
   title_ar: التدقيق الأمني STRIDE
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 63 · التدقيق الأمني STRIDE — Security Audit (STRIDE)

@@ -4,7 +4,7 @@ description: "DaVinci Resolve Pro Pipeline. مونتاج وتلوين كامل �
 metadata:
   superskill: 102
   title_ar: خط إنتاج DaVinci Resolve الاحترافي
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 102 · خط إنتاج DaVinci Resolve الاحترافي — DaVinci Resolve Pro Pipeline

@@ -4,7 +4,7 @@ description: "PowerPoint Decks. عروض تقديمية احترافية: بني
 metadata:
   superskill: 40
   title_ar: عروض باوربوينت
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 40 · عروض باوربوينت — PowerPoint Decks

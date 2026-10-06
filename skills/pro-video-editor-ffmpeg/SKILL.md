@@ -4,7 +4,7 @@ description: "Pro Code-Driven Video Editor. مونتاج احترافي كامل
 metadata:
   superskill: 101
   title_ar: المونتير المحترف بالكود (ffmpeg)
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 101 · المونتير المحترف بالكود (ffmpeg) — Pro Code-Driven Video Editor

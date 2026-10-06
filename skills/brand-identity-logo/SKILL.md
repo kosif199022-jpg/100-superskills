@@ -4,7 +4,7 @@ description: "Brand Identity & Logo. هوية كاملة من الصفر: شعا
 metadata:
   superskill: 13
   title_ar: الهوية البصرية والشعار
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 13 · الهوية البصرية والشعار — Brand Identity & Logo

@@ -4,7 +4,7 @@ description: "Cloudflare & Edge Deployment. Workers وPages وD1 وKV وR2 وQue
 metadata:
   superskill: 58
   title_ar: النشر على Cloudflare والحافة
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 58 · النشر على Cloudflare والحافة — Cloudflare & Edge Deployment

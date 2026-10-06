@@ -4,7 +4,7 @@ description: "YouTube Channel Strategy. نمو قناة بخطة: التموضع
 metadata:
   superskill: 84
   title_ar: استراتيجية قناة يوتيوب
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 84 · استراتيجية قناة يوتيوب — YouTube Channel Strategy

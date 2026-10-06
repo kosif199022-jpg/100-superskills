@@ -4,7 +4,7 @@ description: "LLM Judge & Eval Lab. تقييم مخرجات الذكاء الا�
 metadata:
   superskill: 104
   title_ar: مختبر التقييم والقاضي الآلي
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 104 · مختبر التقييم والقاضي الآلي — LLM Judge & Eval Lab

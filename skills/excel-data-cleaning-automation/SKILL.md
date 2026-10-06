@@ -4,7 +4,7 @@ description: "Excel Data Cleaning & Automation. تحويل ملفات إكسل �
 metadata:
   superskill: 38
   title_ar: تنظيف البيانات وأتمتة إكسل
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 38 · تنظيف البيانات وأتمتة إكسل — Excel Data Cleaning & Automation

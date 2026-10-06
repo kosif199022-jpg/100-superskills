@@ -4,7 +4,7 @@ description: "Premium Landing Page. صفحة هبوط من ملف HTML واحد 
 metadata:
   superskill: 51
   title_ar: صفحة الهبوط الفاخرة
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 51 · صفحة الهبوط الفاخرة — Premium Landing Page

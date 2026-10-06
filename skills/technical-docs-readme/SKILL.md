@@ -4,7 +4,7 @@ description: "Technical Docs & README. توثيق يُقرأ: README بنموذ�
 metadata:
   superskill: 70
   title_ar: التوثيق التقني وREADME
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 70 · التوثيق التقني وREADME — Technical Docs & README

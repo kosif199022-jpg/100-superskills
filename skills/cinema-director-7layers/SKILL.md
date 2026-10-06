@@ -4,7 +4,7 @@ description: "Cinema Director. تصميم مشاهد بصرية بسبع طبق�
 metadata:
   superskill: 11
   title_ar: المخرج السينمائي (7 طبقات)
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # 11 · المخرج السينمائي (7 طبقات) — Cinema Director
