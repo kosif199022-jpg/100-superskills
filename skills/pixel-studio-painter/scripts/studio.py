@@ -66,8 +66,10 @@ AI_PROMPT = """أريد كود صورة لبرنامج رسم اسمه KOSIF Stu
    ألوان: "#rrggbb" أو "#rrggbbaa" أو lin((x1,y1),(x2,y2),[(0,"#..."),(1,"#...")]) أو rad((cx,cy),r,[(0,"#..."),(1,"#...")])
    عمليات: fill(shape, paint, alpha=1, blur=0, mode="normal"|"add"|"screen"|"multiply")  glow(shape, colour, radius, alpha)
            rim(shape, (dx,dy), width, colour, alpha)  text("نص", x, y, size, colour, anchor="mm", bold=False)
-           grade(shadows, highlights, amount)  vignette(0.5)  grain(0.02)
-   اللوحة 1200×800، والأسماء كلها جاهزة بدون import.
+           shade(shape, (lx,ly), lit, dark)  تظليل حجم   noise(shape, amount, cell, seed, mode)  نسيج جلد/صخر/ماء/سحاب
+           scales(shape, size, colour, alpha)  حراشف   grade(shadows, highlights, amount)  vignette(0.5)  grain(0.02)
+   للواقعية: كل شكل كبير shade + noise + rim، ثلاثة أضواء (بارد ودافئ ومحيط)، البعيد مموّه وأزرق، لا خطوط خارجية سوداء،
+   ثم grade وvignette وgrain. اللوحة 1200×800، والأسماء كلها جاهزة بدون import.
 
 الصورة المطلوبة: [اكتب وصف الصورة هنا]"""
 
@@ -724,11 +726,21 @@ class Studio:
             src = Path(p)
         name = re.sub(r"[^\w-]+", "_", src.stem) or "image"
         OUT.mkdir(exist_ok=True)
-        code = image_code(src, name)
-        f = OUT / f"{name}_code.py"
-        f.write_text(code, encoding="utf-8")
-        self.open_code(code)
-        self.status.set(f"📤 كود الصورة جاهز ({len(code) // 1024:,} ك.ب): {f}. اضغط «ارسم الكود» ليرسمها مطابقة للأصل.")
+        self.status.set("📤 يحوّل الصورة إلى برنامج بايثون: يتتبّع أشكالها ثم يضمّن تفاصيلها...")
+
+        def work():
+            import to_python
+            t = time.perf_counter()
+            code = to_python.image_to_python(src, name)
+            f = OUT / f"{name}.py"
+            f.write_text(code, encoding="utf-8")
+
+            def show():
+                self.open_code(code)
+                self.status.set(f"📤 برنامج الصورة جاهز في {time.perf_counter() - t:.0f} ث ({len(code) // 1024:,} ك.ب): {f}   ·   "
+                                f"شغّله بـ python {f.name} في أي مكان، أو اضغط «ارسم الكود» هنا.")
+            self.root.after(0, show)
+        threading.Thread(target=work, daemon=True).start()
 
     # ── files ────────────────────────────────────────────────────────────────────────────────────────────
     def save_png(self):
@@ -810,7 +822,8 @@ def main():
     ap.add_argument("--scale", type=float, default=1.0, help="1.0 = 1200x800, 3.2 = 3840x2560")
     ap.add_argument("--trace", metavar="IMAGE", help="vectorize an image into scenes/<name>.json (+ out/<name>.svg)")
     ap.add_argument("--image", metavar="IMAGE", help="open the studio and redraw this image")
-    ap.add_argument("--image-code", metavar="IMAGE", help="no window: write the code of this image to out/<name>_code.py")
+    ap.add_argument("--image-code", metavar="IMAGE", help="no window: write a standalone Python program for this image to out/<name>.py")
+    ap.add_argument("--data-only", action="store_true", help="with --image-code: the pure-data form (TITLE/SIZE/IMAGE_B64), read by the studio without running")
     ap.add_argument("--code", metavar="FILE", help="open the studio and draw this code file (SVG/PIL/matplotlib/turtle/scene)")
     ap.add_argument("--name", help="scene name for --trace (default: the image's file name)")
     ap.add_argument("--title", help="title shown while drawing a traced scene")
@@ -831,8 +844,13 @@ def main():
     if a.image_code:
         name = re.sub(r"[^\w-]+", "_", Path(a.image_code).stem) or "image"
         OUT.mkdir(exist_ok=True)
-        f = OUT / f"{name}_code.py"
-        f.write_text(image_code(Path(a.image_code), name), encoding="utf-8")
+        if a.data_only:
+            f = OUT / f"{name}_code.py"
+            f.write_text(image_code(Path(a.image_code), name), encoding="utf-8")
+        else:
+            import to_python
+            f = OUT / f"{name}.py"
+            f.write_text(to_python.image_to_python(Path(a.image_code), name), encoding="utf-8")
         print(f"{f}: {f.stat().st_size // 1024:,} KB")
         return
     speed = {"slow": "بطيء", "normal": "عادي", "fast": "سريع", "instant": "فوري"}.get(a.speed, a.speed)

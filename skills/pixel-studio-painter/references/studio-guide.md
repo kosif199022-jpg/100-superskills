@@ -25,7 +25,26 @@ The kinds of code it accepts:
 - **All Python code** (PIL, matplotlib, turtle) is drawn at the **picture's own size, without resampling**, and
   ends identical to what the code itself produces. The studio checks this at the end.
 
-## 📤 Image code: code that redraws an image identically
+## 📤 Image code: a Python program that makes the image again
+
+Press **"📤 كود الصورة"** (or `python studio.py --image-code photo.jpg`) and you get a **standalone Python
+program** (Pillow only). `python name.py` anywhere writes `name.png`, **identical to the original**, and the
+program checks that itself. It has two parts: the picture's colour regions as `draw.polygon(...)` calls, largest
+first, readable and editable; then the original's own bytes, from which every pixel the drawing did not get
+exactly right is completed. Verified on a 900×900 ad (3,394 polygons, 0 differing pixels) and on a logo.
+Opened in the studio, the program's own polygons are drawn in the code's order and then the details.
+`--data-only` gives the older pure-data form, which the studio reads without running anything.
+
+## Realism: primitives, a guide and a measured gate
+
+`render.py` now has `shade` (form shading toward a light), `noise` (fractal texture: skin, rock, water, clouds)
+and `scales`. `references/drawing-guide.md` is the agent's guide: which code to write for which input, the full
+scene language, the realism recipe (three lights, shade + noise + rim on every large shape, atmospheric depth,
+grade/vignette/grain) and the review loop. `judge.py` measures a render (flat fills, one-pixel edges, distinct
+colours, tonal range) against thresholds calibrated on real photographs, shaded scenes and flat cartoons, then
+asks Jev which description fits the numbers. `scenes/whale_dragon.py` was built with it: three rounds, PASS.
+
+### The older pure-data image code
 
 Code written from a description, by any AI or by hand, is a redrawing. It can come close to a photo but never
 match it. For an identical result, press **"📤 كود الصورة"** (or run `python studio.py --image-code photo.jpg`).
@@ -105,7 +124,7 @@ python studio.py dragon_girl --render out/x.png --scale 3.2   # no window: 3840x
 ```
 
 ```bash
-python -m unittest discover -s tests     # 22 tests
+python -m unittest discover -s tests     # 25 tests
 ```
 
 Requirements: Python 3.11+, Pillow, numpy, opencv-python, arabic-reshaper, python-bidi. matplotlib is needed only
@@ -120,10 +139,13 @@ for matplotlib code.
 | `svg_import.py` | SVG → steps (shapes, transforms, CSS, gradients, text) |
 | `runner.py` | Runs code from any AI in its own process and records PIL commands in order |
 | `exact.py` | Exact redraw: blocking in → refining → final touches, ending identical to the original. For photos, the plan is chosen by Jev |
+| `to_python.py` | Image → standalone Pillow program (polygons + embedded original), identical output |
+| `judge.py` | Realism gate: measured flat fills, hard edges, colours, tonal range; calibrated thresholds; Jev reads the numbers |
+| `references/drawing-guide.md` | The agent's guide: prompt or image → code, scene language, realism recipe, review loop |
 | `jev_client.py` | Jev, the fast judge: asks twice in parallel with the options reversed and averages the answers. If Jev is unreachable, a deterministic rule decides |
 | `vectorize.py` | Image → vector colour layers (+ SVG). Logos: true colours with exact edges. Photos: 24 colours |
 | `vector_scene.py` | Builds the drawing steps from a traced image |
-| `scenes/` | `dragon_girl.py` (girl versus dragon), `duck_dragon.py` (duck versus colossal dragon, 16:9). Traced images and saved code land here too |
+| `scenes/` | `dragon_girl.py`, `duck_dragon.py`, `whale_dragon.py` (realism showcase, built with judge.py). Traced images and saved code land here too |
 | `examples/` | AI-style examples: a PIL house, an SVG rocket, a matplotlib flower, and code with a deliberate error |
 
 ## Measured on this machine

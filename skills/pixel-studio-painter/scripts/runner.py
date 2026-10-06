@@ -43,8 +43,8 @@ CALLS_AR = {"rectangle": "مستطيل", "rounded_rectangle": "مستطيل مس
 
 
 def kind_of(code: str) -> str:
-    if re.search(r"^IMAGE_B64\s*=", code, re.M):
-        return "image"
+    if re.search(r"^IMAGE_B64\s*=", code, re.M) and not re.search(r"^\s*(def |draw\.|img\.|for |while )", code, re.M):
+        return "image"                                    # data only: TITLE / SIZE / IMAGE_B64
     s = code.lstrip("﻿ \t\r\n")
     if s.startswith("<") and "<svg" in s[:4000].lower():
         return "svg"

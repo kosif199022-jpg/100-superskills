@@ -477,6 +477,95 @@ def text(s: str, x: float, y: float, size: float, colour="#000000", anchor: str 
     return op
 
 
+def _value_noise(h: int, w: int, cell: float, seed: int, octaves: int = 4) -> np.ndarray:
+    """Smooth random texture in 0..1 (fractal value noise): the base of skin, stone, water and cloud textures."""
+    rng = np.random.default_rng(seed)
+    out = np.zeros((h, w), np.float32)
+    amp, total = 1.0, 0.0
+    for o in range(octaves):
+        c = max(1.0, cell / (2 ** o))
+        gh, gw = int(h / c) + 2, int(w / c) + 2
+        g = rng.random((gh, gw), dtype=np.float32)
+        im = Image.fromarray((g * 255).astype(np.uint8)).resize((w, h), Image.BICUBIC)
+        out += np.asarray(im, np.float32) / 255 * amp
+        total += amp
+        amp *= 0.5
+    return out / total
+
+
+def noise(shape: Shape, amount: float = 0.25, cell: float = 24.0, seed: int = 1, mode: str = "multiply",
+          colour="#ffffff", octaves: int = 4, stretch: tuple[float, float] = (1.0, 1.0)) -> Op:
+    """Texture inside a shape: random light and dark grain the eye reads as a material (skin, rock, water, fog).
+    `cell` is the grain size in scene units; `stretch` (sx, sy) elongates it (water streaks, fur); mode multiply
+    darkens by up to `amount`, add/screen lightens, normal paints the colour with noisy strength."""
+    def op(ctx: Ctx):
+        box = ctx.bbox(shape, 2)
+        if not box:
+            return
+        x0, y0, x1, y1 = box
+        m = ctx.mask(shape, box)
+        n = _value_noise(y1 - y0, x1 - x0, cell * ctx.scale, seed, octaves)
+        if stretch != (1.0, 1.0):
+            sx, sy = stretch
+            big = _value_noise(int((y1 - y0) / sy) + 2, int((x1 - x0) / sx) + 2, cell * ctx.scale, seed, octaves)
+            n = np.asarray(Image.fromarray((big * 255).astype(np.uint8)).resize((x1 - x0, y1 - y0), Image.BICUBIC),
+                           np.float32) / 255
+        n = (n - 0.5) * 2                                   # -1 .. 1
+        col = ctx.paint(colour, box)
+        if mode == "multiply":
+            ctx.blend(box, m, (1 + np.clip(n, -1, 0) * amount)[..., None] * np.ones(3, np.float32), 1.0, "multiply")
+        elif mode == "normal":
+            ctx.blend(box, m * np.clip(n, 0, 1) * amount, col, 1.0, "normal")
+        else:
+            ctx.blend(box, m * np.clip(n, 0, 1) * amount, col, 1.0, mode)
+    return op
+
+
+def shade(shape: Shape, light: Pt, lit, dark, core: float = 0.35, soft: float = 0.0) -> Op:
+    """Form shading: the side of a shape facing the light point gets `lit`, the far side `dark`, with a smooth
+    fall-off between them, which turns a flat silhouette into a rounded body."""
+    xs = [p[0] for q in shape for p in q]
+    ys = [p[1] for q in shape for p in q]
+    if not xs:
+        return lambda ctx: None
+    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    r = max(max(xs) - min(xs), max(ys) - min(ys)) / 2
+    lx, ly = light
+    d = math.hypot(lx - cx, ly - cy) or 1.0
+    hx, hy = cx + (lx - cx) / d * r * core, cy + (ly - cy) / d * r * core
+    return fill(shape, rad((hx, hy), r * (1.0 + core), [(0, lit), (1, dark)]), 1.0, soft)
+
+
+def scales(shape: Shape, size: float = 14.0, colour="#000000", alpha: float = 0.35, width: float = 1.0,
+           stagger: bool = True) -> Op:
+    """Overlapping arcs clipped to a shape: reptile scales, fish skin, roof tiles."""
+    xs = [p[0] for q in shape for p in q]
+    ys = [p[1] for q in shape for p in q]
+    if not xs:
+        return lambda ctx: None
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    arcs = []
+    row = 0
+    y = y0
+    while y < y1 + size:
+        x = x0 - (size / 2 if (stagger and row % 2) else 0)
+        while x < x1 + size:
+            arcs.append([(x + size * .5 * (1 + math.cos(math.pi * (1 - t))), y + size * .45 * math.sin(math.pi * (1 - t)))
+                         for t in [k / 8 for k in range(9)]])
+            x += size
+        y += size * .55
+        row += 1
+    pattern = stroke(arcs, width)
+
+    def op(ctx: Ctx):
+        box = ctx.bbox(shape, 2)
+        if not box:
+            return
+        m = ctx.mask(shape, box) * ctx.mask(pattern, box)
+        ctx.blend(box, m, ctx.paint(colour, box), alpha, "normal")
+    return op
+
+
 def vignette(strength: float = 0.5) -> Op:
     def op(ctx: Ctx):
         y, x = np.ogrid[:ctx.H, :ctx.W]

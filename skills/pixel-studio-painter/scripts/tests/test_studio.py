@@ -68,6 +68,16 @@ class Renderer(unittest.TestCase):
         reds = np.asarray(im)[50:150, 50:150]
         self.assertTrue(((reds[..., 0] > 200) & (reds[..., 1] < 60)).any(), "Arabic text was not drawn")
 
+    def test_realism_primitives_change_a_flat_fill(self):
+        base = [R.Step("b", [R.fill(R.ellipse(600, 400, 300, 200), "#808080")])]
+        plain = np.asarray(R.render_image(base, .25, rolloff=1)).astype(int)
+        for op in (R.shade(R.ellipse(600, 400, 300, 200), (200, 100), "#c0c0c0", "#202020"),
+                   R.noise(R.ellipse(600, 400, 300, 200), .4, 20, 3),
+                   R.scales(R.ellipse(600, 400, 300, 200), 16, "#000000", .5)):
+            im = np.asarray(R.render_image(base + [R.Step("x", [op])], .25, rolloff=1)).astype(int)
+            self.assertGreater(np.abs(im - plain).mean(), 1.0)
+            self.assertGreater(len(np.unique(im[70:130, 100:200].reshape(-1, 3), axis=0)), 4)
+
     def test_reveal_order_is_a_permutation_for_every_order(self):
         idx = np.arange(0, 12000, 7, dtype=np.int32)
         for order in ("sweep", "grow", "rise", "down", "left", "right", "sparkle"):
@@ -155,6 +165,61 @@ class Exact(unittest.TestCase):
         base[..., 3] = 255
         base[:10, :10, 3] = 0                                   # a see-through corner must stay see-through
         self.check(base)
+
+
+class ImageToPython(unittest.TestCase):
+    """📤: a standalone Pillow program that makes the image again, pixel for pixel, outside the studio."""
+
+    def test_program_reproduces_the_image_with_plain_python(self):
+        import to_python
+        tmp = Path(tempfile.mkdtemp())
+        Image.fromarray(sample_logo(), "RGBA").save(tmp / "logo.png")
+        code = to_python.image_to_python(tmp / "logo.png", "logo")
+        self.assertIn("draw.polygon(", code)
+        (tmp / "logo.py").write_text(code, encoding="utf-8")
+        r = subprocess.run([sys.executable, "logo.py"], cwd=tmp, capture_output=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stderr.decode("utf-8", "replace"))
+        out = np.asarray(Image.open(tmp / "logo.png").convert("RGBA"))
+        self.assertEqual(int(np.any(out != sample_logo(), axis=2).sum()), 0)
+        import runner
+        self.assertEqual(runner.kind_of(code), "python")        # a real program: it runs and is recorded
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+class Judge(unittest.TestCase):
+    """The realism gate tells a flat cartoon from a shaded picture, measured, not guessed."""
+
+    def test_flat_cartoon_is_revised_and_shaded_scene_passes(self):
+        import judge
+        tmp = Path(tempfile.mkdtemp())
+        flat = Image.new("RGB", (400, 300), "#ffffff")
+        d = ImageDraw.Draw(flat)
+        d.rectangle([0, 150, 400, 300], fill="#4caf50")
+        d.ellipse([150, 40, 250, 140], fill="#ffd54f", outline="#000000", width=4)
+        d.rectangle([100, 120, 300, 220], fill="#d7a86e", outline="#000000", width=4)
+        flat.save(tmp / "flat.png")
+        steps = [R.Step("bg", [R.fill(R.rect(0, 0, 1200, 800), R.lin((0, 0), (0, 800), [(0, "#102030"), (1, "#405060")])),
+                               R.noise(R.rect(0, 0, 1200, 800), .3, 40, 1)]),
+                 R.Step("ball", [R.shade(R.ellipse(600, 400, 250, 250), (300, 200), "#d0b090", "#301808", .4),
+                                 R.noise(R.ellipse(600, 400, 250, 250), .3, 12, 2), R.grain(.02)])]
+        R.render_image(steps, .5).save(tmp / "shaded.png")
+        mf, ms = judge.measure(tmp / "flat.png"), judge.measure(tmp / "shaded.png")
+        vf, rf = judge.verdict(mf)
+        shutil.rmtree(tmp, ignore_errors=True)
+        self.assertEqual(vf, "REVISE", rf)
+        self.assertGreater(mf["flat_share"], judge.THRESH["flat_share"])          # the cartoon is caught by its flat fills
+        self.assertLess(ms["flat_share"], judge.THRESH["flat_share"])             # shading leaves no flat fill
+        self.assertLess(ms["hard_edge_share"], judge.THRESH["hard_edge_share"])   # and no outline look
+        self.assertLess(ms["flat_share"], mf["flat_share"] / 5)
+
+    def test_the_whale_scene_passes_the_gate(self):
+        import judge
+        _, steps, rolloff = studio.load("whale_dragon")
+        tmp = Path(tempfile.mkdtemp())
+        R.render_image(steps, 1.0, rolloff=rolloff).save(tmp / "whale.png")
+        v, reasons = judge.verdict(judge.measure(tmp / "whale.png"))
+        shutil.rmtree(tmp, ignore_errors=True)
+        self.assertEqual(v, "PASS", reasons)
 
 
 class JevPlan(unittest.TestCase):

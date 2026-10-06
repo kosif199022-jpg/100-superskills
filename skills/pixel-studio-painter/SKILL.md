@@ -23,10 +23,11 @@ metadata:
 3. للتشغيل بنافذة: python scripts/studio.py --code drawing.py أو --image photo.jpg. وبلا نافذة: python scripts/runner.py CODE OUT_DIR يكتب job_*.npz بترتيب الرسم، ثم done.json أو error.txt.
 4. الكود الملصوق يعمل بصلاحيات المستخدم في عملية منفصلة بمهلة 120 ث داخل مجلد مؤقت. قبل التشغيل تفحص risky() الأوامر الخطرة (حذف، شبكة، subprocess، ctypes)، ويُسأل المستخدم عند وجودها.
 5. للمطابقة التامة: scripts/exact.py يرسم بدقة الصورة الأصلية على ثلاث مراحل (الكتل، ثم التدقيق، ثم اللمسات الدقيقة)، وينتهي بـ assert أن الناتج يساوي الأصل في كل بيكسل، بما فيه الشفافية. للصور الفوتوغرافية: تُقاس أربع خطط (6/10/16/24 لوناً للكتل) على نسخة مصغّرة في نحو 3 ث، ثم يختار Jev أفضلها مرتين بترتيبين متعاكسين (scripts/jev_client.py)، وإن لم يكن متاحاً قررت قاعدة حتمية. اللمسات الأخيرة مرتبة من الأوضح للعين إلى غير المرئي.
-6. لكود يعيد الصورة مطابقة: زر «📤 كود الصورة» أو studio.py --image-code يضمّن بايتات الصورة الأصلية في كود مستقل يُقرأ كبيانات بلا تنفيذ (ast.literal_eval)، ويرسمها البرنامج من الصفر لتنتهي مطابقة للأصل.
-7. للتكبير بلا فقد: scripts/vectorize.py يتتبّع الصورة. للشعار ألوانه الحقيقية مع اختبار المزج المجاور، وللصورة الفوتوغرافية k-means بـ 24 لوناً. ثم SVG وتصدير 3840×2560.
-8. اكتب المشاهد السينمائية في scripts/scenes/<name>.py: أشكال path وtube وellipse، وإضاءة glow وrim، ونص عربي مُشكَّل text، ثم grade وvignette وgrain. اختبر لقطة ثابتة بـ --render وافحصها قبل فتح النافذة.
-9. تحقّق في النهاية: شريط الحالة يعرض «✅ مطابقة للأصل 100%» وعدد البيكسل، ثم شغّل python -m unittest discover -s tests من scripts/ (22 اختباراً).
+6. لكود يعيد الصورة مطابقة: زر «📤 كود الصورة» أو studio.py --image-code يكتب برنامج بايثون مستقلاً (Pillow فقط): scripts/to_python.py يرسم أشكال الصورة بـ draw.polygon بألوانها ثم يكمل كل بيكسل من الأصل المضمّن ويتحقق بنفسه. يعمل بـ python name.py في أي مكان، وفي الاستوديو يُرسم بترتيب الكود. الصيغة البيانية (--data-only) تُقرأ بلا تنفيذ.
+7. لبرومبت واقعي: اتبع references/drawing-guide.md: لغة المشهد كاملة، وصفة الواقعية (shade + noise + rim لكل شكل، ثلاثة أضواء، عمق جوي، grade/vignette/grain)، ثم قِس النتيجة بـ scripts/judge.py (المسطّح < 30%، الحواف الحادة < 55%، الألوان > 900، مدى القيم > 150، وحكم Jev من الأرقام) وراجع قصاصات 1:1، وكرّر 2–4 جولات.
+8. للتكبير بلا فقد: scripts/vectorize.py يتتبّع الصورة. للشعار ألوانه الحقيقية مع اختبار المزج المجاور، وللصورة الفوتوغرافية k-means بـ 24 لوناً. ثم SVG وتصدير 3840×2560.
+9. اكتب المشاهد السينمائية في scripts/scenes/<name>.py: أشكال path وtube وellipse، وإضاءة glow وrim، ونص عربي مُشكَّل text، ثم grade وvignette وgrain. اختبر لقطة ثابتة بـ --render وافحصها قبل فتح النافذة.
+10. تحقّق في النهاية: شريط الحالة يعرض «✅ مطابقة للأصل 100%» وعدد البيكسل، ثم شغّل python -m unittest discover -s tests من scripts/ (25 اختباراً).
 
 ## بوابات الجودة (لا تسليم قبل المرور)
 
@@ -36,6 +37,7 @@ metadata:
 - النسخة المتجهة تُوصف بصدق: ألوانها مبسّطة ودقتها محدودة بدقة المصدر.
 - النص العربي مُشكَّل ومرتّب من اليمين إلى اليسار (arabic-reshaper وpython-bidi) قبل الرسم.
 - كل اختبارات scripts/tests تمر قبل التسليم.
+- المشهد الواقعي لا يُسلَّم قبل PASS من judge.py ومراجعة قصاصة 1:1 بالعين، ويُقال صراحة إنه لوحة رقمية لا صورة فوتوغرافية.
 
 ## المخرجات
 
@@ -50,16 +52,19 @@ metadata:
 
 - `scripts/exact.py` — Exact redraw: an image is painted from nothing, the way a painter works, and ends identical to the original,
 - `scripts/jev_client.py` — Jev, the fast judge: asks the live Jev service to choose between options, twice in parallel with the options in
+- `scripts/judge.py` — Does a rendered picture read as painted-realistic, or as a flat cartoon? Measured, not guessed.
 - `scripts/render.py` — KOSIF Studio renderer.
 - `scripts/runner.py` — Run picture code from any AI in its own process and turn it into paint jobs the studio plays pixel by pixel.
 - `scripts/studio.py` — KOSIF Studio: a drawing program that paints a picture pixel by pixel.
 - `scripts/svg_import.py` — SVG -> picture program. Ask any AI to "draw it as SVG", paste the SVG into the studio, and every element becomes
+- `scripts/to_python.py` — Any image -> a standalone Python program (Pillow only) that makes the same image again, pixel for pixel.
 - `scripts/vector_scene.py` — A traced picture (trace.py JSON) as a picture program: a backdrop, then one step per colour layer, largest first,
 - `scripts/vectorize.py` — Turn an image (a logo, an icon, flat artwork) into a vector picture program.
 
 ## مراجع مكتوبة
 
 - `references/studio-guide.md`
+- `references/drawing-guide.md`
 
 ## مركّبة من مهارات الأطلس
 
