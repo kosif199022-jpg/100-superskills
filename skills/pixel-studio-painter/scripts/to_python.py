@@ -20,12 +20,14 @@ from PIL import Image
 import vectorize as V
 
 TEMPLATE = '''# -*- coding: utf-8 -*-
-"""{title}: صورة {w}×{h} مكتوبة كبرنامج بايثون (تحتاج مكتبة Pillow فقط).
+"""KOSIF Studio image program (Pillow only).
 
-شغّله: python {stem}.py   ← يكتب {stem}.png مطابقة للأصل بيكسلاً ببيكسل، ويتحقق من ذلك بنفسه.
-الجزء 1 يرسم أشكال الصورة بألوانها (يمكنك تعديل أي لون أو شكل)، والجزء 2 يكمل كل بيكسل
-لم يطابق الأصل من بيانات الصورة الأصلية المحفوظة في آخر الملف.
-صُنع بـ KOSIF Studio: {layers} طبقة لون، {polys} شكلاً.
+    python {stem}.py
+    -> writes {stem}.png, identical to the original ({w}x{h}), and checks that itself.
+
+الجزء الأول يرسم أشكال الصورة بألوانها، ويمكنك تعديل أي لون أو شكل.
+الجزء الثاني يكمل كل بيكسل لم يطابق الأصل من بيانات الصورة الأصلية المحفوظة في آخر الملف.
+طبقات الألوان: {layers} · الأشكال: {polys}
 """
 import base64
 import io

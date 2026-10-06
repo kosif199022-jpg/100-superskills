@@ -564,6 +564,8 @@ class Studio:
             row.pack(fill="x", padx=8, pady=4)
             ttk.Button(row, text="▶  ارسم الكود", command=self.run_code).pack(side="right", padx=2)
             ttk.Button(row, text="📋  لصق", command=self.paste_code).pack(side="right", padx=2)
+            ttk.Button(row, text="📄  نسخ الكود", command=self.copy_code).pack(side="right", padx=2)
+            ttk.Button(row, text="💾  حفظ ملفاً", command=self.save_code_file).pack(side="right", padx=2)
             ttk.Button(row, text="📂  فتح ملف", command=self.open_code_file).pack(side="right", padx=2)
             ttk.Button(row, text="💾  حفظ كمشهد", command=self.save_code_as_scene).pack(side="right", padx=2)
             ttk.Button(row, text="🧹  مسح", command=lambda: self.code_text.delete("1.0", "end")).pack(side="right", padx=2)
@@ -589,6 +591,8 @@ class Studio:
                                    relief="flat", state="disabled")
             self.err_box.pack(fill="x", padx=8, pady=(4, 8))
             self.code_text.bind("<Control-Return>", lambda e: (self.run_code(), "break")[1])
+            self.code_text.bind("<Control-a>", lambda e: (self.code_text.tag_add("sel", "1.0", "end-1c"), "break")[1])
+            self.code_text.bind("<Control-A>", lambda e: (self.code_text.tag_add("sel", "1.0", "end-1c"), "break")[1])
             w.geometry("+%d+%d" % (self.root.winfo_rootx() + 60, self.root.winfo_rooty() + 80))
         self.code_win.deiconify()
         self.code_win.lift()
@@ -600,6 +604,30 @@ class Studio:
     def load_code_text(self, text: str):
         self.code_text.delete("1.0", "end")
         self.code_text.insert("1.0", text)
+
+    def copy_code(self):
+        """📄: the whole code to the clipboard (the file stays on disk too)."""
+        code = self.code_text.get("1.0", "end-1c")
+        if not code.strip():
+            self.status.set("لا يوجد كود لنسخه.")
+            return
+        self.root.clipboard_clear()
+        self.root.clipboard_append(code)
+        self.root.update()                                  # hand the clipboard over before anything else runs
+        self.status.set(f"📄 نُسخ الكود إلى الحافظة ({len(code):,} حرفاً، {len(code) // 1024:,} ك.ب).")
+
+    def save_code_file(self):
+        from tkinter import filedialog
+        code = self.code_text.get("1.0", "end-1c")
+        if not code.strip():
+            return
+        low = code.lstrip()[:4000].lower()
+        ext = ".html" if low.startswith("<") and ("<!doctype html" in low or "<html" in low) else ".svg" if low.startswith("<") else ".py"
+        p = filedialog.asksaveasfilename(defaultextension=ext, initialdir=OUT, initialfile=f"code{ext}",
+                                         filetypes=[("كود", f"*{ext}"), ("الكل", "*.*")], parent=self.code_win)
+        if p:
+            Path(p).write_text(code, encoding="utf-8")
+            self.status.set(f"💾 حُفظ الكود: {p}")
 
     def paste_code(self):
         try:
