@@ -566,6 +566,105 @@ def scales(shape: Shape, size: float = 14.0, colour="#000000", alpha: float = 0.
     return op
 
 
+# ── physically shaded surfaces: a height field under the shape, lit by real light directions ────────────────
+Light = tuple  # (x, y, z, colour, strength): z is height above the picture plane, in scene units
+
+
+def _normals(h: np.ndarray, scale: float) -> np.ndarray:
+    """Surface normals of a height field (scene units -> pixels: height is already in pixels)."""
+    import cv2
+    gx = cv2.Sobel(h, cv2.CV_32F, 1, 0, ksize=3) / 8.0
+    gy = cv2.Sobel(h, cv2.CV_32F, 0, 1, ksize=3) / 8.0
+    n = np.stack([-gx, -gy, np.ones_like(h)], -1)
+    return n / np.linalg.norm(n, axis=-1, keepdims=True)
+
+
+def _lit(n: np.ndarray, box, ctx, lights, base, ambient, shininess, spec, fresnel, fres_col):
+    x0, y0, x1, y1 = box
+    s = ctx.scale
+    X, Y = np.meshgrid((np.arange(x0, x1, dtype=np.float32) + .5) / s, (np.arange(y0, y1, dtype=np.float32) + .5) / s)
+    col = np.zeros(n.shape, np.float32)
+    basec = ctx.paint(base, box)[..., :3]
+    col += basec * ambient
+    V = np.array([0, 0, 1], np.float32)
+    for lx, ly, lz, lc, strength in lights:
+        L = np.stack([lx - X, ly - Y, np.full_like(X, lz)], -1)
+        L /= np.linalg.norm(L, axis=-1, keepdims=True)
+        lam = np.clip((n * L).sum(-1), 0, 1)[..., None]
+        H = L + V
+        H /= np.linalg.norm(H, axis=-1, keepdims=True)
+        sp = np.clip((n * H).sum(-1), 0, 1)[..., None] ** shininess
+        c = rgb(lc)[None, None, :] * strength
+        col += basec * c * lam + c * sp * spec
+    if fresnel:
+        f = (1 - np.clip(n[..., 2], 0, 1))[..., None] ** 2
+        col += rgb(fres_col)[None, None, :] * f * fresnel
+    return col
+
+
+def relief(shape: Shape, lights: list, base="#808080", ambient: float = 0.22, bulge: float = 0.6, plateau: float = 0.5,
+           shininess: float = 30.0, spec: float = 0.5, bump: float = 0.0, bump_cell: float = 12.0, seed: int = 1,
+           fresnel: float = 0.0, fres_col="#9fb6d8", soft: float = 1.0) -> Op:
+    """A shape as a solid body: a height field rises from its edges (rounded sides, a flat top beyond `plateau`),
+    optional bumps for skin or rock, and real lights: diffuse falls off with the surface angle, wet highlights
+    appear where the surface faces between the light and the eye, Fresnel brightens grazing edges. This is what
+    turns a flat silhouette into a lit volume."""
+    def op(ctx: Ctx):
+        import cv2
+        box = ctx.bbox(shape, 3)
+        if not box:
+            return
+        m = ctx.mask(shape, box)
+        mb = (m > 0.5).astype(np.uint8)
+        d = cv2.distanceTransform(mb, cv2.DIST_L2, 5)
+        dmax = max(float(d.max()), 1.0)
+        t = np.clip(d / (dmax * plateau), 0, 1)
+        h = np.sqrt(1 - (1 - t) ** 2) * dmax * bulge
+        if bump:
+            h += (_value_noise(*h.shape, bump_cell * ctx.scale, seed, 4) - .5) * bump * ctx.scale * 2
+        if soft:
+            h = cv2.GaussianBlur(h, (0, 0), soft * ctx.scale)
+        n = _normals(h, ctx.scale)
+        col = _lit(n, box, ctx, lights, base, ambient, shininess, spec, fresnel, fres_col)
+        ctx.blend(box, m, np.concatenate([col, np.ones_like(col[..., :1])], -1), 1.0, "normal")
+    return op
+
+
+def water(area: Shape, lights: list, deep="#0a1118", sky="#2a3a4c", cell: float = 18.0, stretch: float = 6.0,
+          height: float = 6.0, seed: int = 1, shininess: float = 60.0, spec: float = 1.2, octaves: int = 4) -> Op:
+    """A water surface: waves as a stretched noise height field; the colour mixes the deep colour with the sky
+    by how much each wave faces up, and every light leaves a trail of glints on the facets that face it."""
+    def op(ctx: Ctx):
+        import cv2
+        box = ctx.bbox(area, 2)
+        if not box:
+            return
+        x0, y0, x1, y1 = box
+        m = ctx.mask(area, box)
+        big = _value_noise(int((y1 - y0)) + 2, int((x1 - x0) / stretch) + 2, cell * ctx.scale, seed, octaves)
+        hgt = np.asarray(Image.fromarray((big * 255).astype(np.uint8)).resize((x1 - x0, y1 - y0), Image.BICUBIC), np.float32) / 255
+        hgt = (hgt - .5) * height * ctx.scale
+        n = _normals(hgt, ctx.scale)
+        up = np.clip(n[..., 2], 0, 1)[..., None]
+        base = ctx.paint(deep, box)[..., :3] * (1 - up * .6) + ctx.paint(sky, box)[..., :3] * up * .6
+        col = base * .9
+        V = np.array([0, 0, 1], np.float32)
+        s = ctx.scale
+        X, Y = np.meshgrid((np.arange(x0, x1, dtype=np.float32) + .5) / s, (np.arange(y0, y1, dtype=np.float32) + .5) / s)
+        for lx, ly, lz, lc, strength in lights:
+            L = np.stack([lx - X, ly - Y, np.full_like(X, lz)], -1)
+            dist = np.linalg.norm(L, axis=-1, keepdims=True)
+            L /= dist
+            H = L + V
+            H /= np.linalg.norm(H, axis=-1, keepdims=True)
+            sp = np.clip((n * H).sum(-1), 0, 1)[..., None] ** shininess
+            lam = np.clip((n * L).sum(-1), 0, 1)[..., None]
+            c = rgb(lc)[None, None, :] * strength
+            col += c * sp * spec + base * c * lam * .5
+        ctx.blend(box, m, np.concatenate([col, np.ones_like(col[..., :1])], -1), 1.0, "normal")
+    return op
+
+
 def vignette(strength: float = 0.5) -> Op:
     def op(ctx: Ctx):
         y, x = np.ogrid[:ctx.H, :ctx.W]

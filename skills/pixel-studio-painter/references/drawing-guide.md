@@ -33,6 +33,8 @@
 - `fill(shape, paint, alpha=1, blur=0, mode="normal"|"add"|"screen"|"multiply")`
 - `shade(shape, light_xy, lit, dark, core=.35)` **تظليل الحجم**: الجهة المواجهة للضوء فاتحة والبعيدة داكنة
 - `noise(shape, amount, cell, seed, mode, colour, octaves, stretch=(sx, sy))` **نسيج**: جلد، صخر، ماء، سحاب
+- `relief(shape, lights, base, ambient, bulge, plateau, shininess, spec, bump, bump_cell, seed, fresnel)` **جسم مضاء فيزيائياً**: ارتفاع يرتفع من الحواف، وأضواء حقيقية (x, y, ارتفاع, لون, قوة) بانتشار ولمعان مبلّل وفرينل. هذا ما يحوّل الكتلة المسطّحة إلى حجم. `bump` نتوءات الجلد والصخر.
+- `water(area, lights, deep, sky, cell, stretch, height, seed, shininess, spec)` **سطح ماء**: موج كحقل ارتفاع، ولمعات كل ضوء على وجوه الموج.
 - `scales(shape, size, colour, alpha, width)` حراشف وقراميد وجلد سمك
 - `glow(shape, colour, radius, alpha)` توهّج ضوئي · `rim(shape, (dx, dy), width, colour, alpha, soft)` **إضاءة حواف** من اتجاه
 - `text("نص", x, y, size, colour, anchor="mm", bold)` نص عربي مُشكَّل ومرتّب تلقائياً
@@ -52,7 +54,7 @@
 1. **القيمة قبل اللون.** قرّر أين الأسود العميق وأين أعلى ضوء. مدى القيم في الصورة الواقعية يتجاوز 150 من 255.
 2. **ثلاثة أضواء:** مفتاح بارد (قمر/برق)، مفتاح دافئ (نار/شمس غاربة)، وضوء محيط خافت. كل جسم يأخذ `rim` من كل
    مفتاح، باتجاهه الصحيح، والدافئ أقوى عند الجهة القريبة من مصدره.
-3. **لا سطح مسطّح.** كل شكل كبير: `shade` (حجم) + `noise` (مادة) + `rim` (حافة). الجلد: noise خلية 10–14 ضرب.
+3. **لا سطح مسطّح.** كل جسم كبير: `relief` بأضواء المشهد نفسها (هو الفرق بين «رسم أطفال» ولوحة)، ثم تفاصيل المادة فوقه؛ الأشكال الثانوية: `shade` + `noise` + `rim`. الماء دائماً `water`. الجلد: noise خلية 10–14 ضرب.
    الماء: noise ممدود أفقياً `stretch=(6,1)`. السحاب: noise خلية 60 مع `blur`. الصخر: noise خلية 26 + rim بارد.
 4. **المواد:** الحراشف `scales` فوق `shade`. اللهب طبقات `flame` بوضع `add` من الأحمر إلى الأبيض مع `glow`. الماء
    المتطاير `dots` + `blur` + طبقة `add` دافئة قرب النار. البخار سحابة `screen` بداخلها `add` دافئ. الريش والفراء
