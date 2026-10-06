@@ -60,6 +60,11 @@ AI_PROMPT = """أريد كود صورة لبرنامج رسم اسمه KOSIF Stu
 2) أو كود بايثون بمكتبة PIL فقط: img = Image.new("RGB", (1200, 800)) ثم draw = ImageDraw.Draw(img)، وارسم من
    الخلفية إلى التفاصيل بـ rectangle وellipse وpolygon وline وarc وtext، ثم img.save("out.png").
 
+4) أو للواقعية ثلاثية الأبعاد: صفحة HTML واحدة بـ Three.js (importmap من cdn.jsdelivr.net/npm/three@0.170.0)،
+   مواد MeshPhysicalMaterial (clearcoat للمبلّل، transmission للأغشية)، ضوء بارد DirectionalLight وضوء دافئ PointLight،
+   FogExp2، جسيمات Points بـ AdditiveBlending للنار والشرر، UnrealBloomPass ثم OutputPass، ACESFilmicToneMapping.
+   العقد: ضع window.__ready = true بعد رسم أول إطار، ودالة window.render(t) للحركة مع window.__duration بالثواني.
+
 3) أو للمؤثرات السينمائية (توهج، إضاءة حواف، تدرجات ناعمة) كود KOSIF: دالة build() ترجع قائمة Step:
    Step("اسم الخطوة", [عمليات], "ترتيب", origin=(x, y))   الترتيب: "sweep" أو "grow" أو "rise" أو "down" أو "sparkle"
    أشكال: rect(x,y,w,h) ellipse(cx,cy,rx,ry) path("M .. C .. Z") poly([(x,y),...]) tube([(x,y),...],[r,...]) dots([(x,y,r),...])
@@ -80,12 +85,12 @@ AI_PROMPT = """أريد كود صورة لبرنامج رسم اسمه KOSIF Stu
 
 # ── scenes: picture programs on disk ─────────────────────────────────────────────────────────────────────────
 def scenes() -> list[str]:
-    return sorted({p.stem for p in [*SCENES.glob("*.py"), *SCENES.glob("*.json"), *SCENES.glob("*.svg")]
+    return sorted({p.stem for p in [*SCENES.glob("*.py"), *SCENES.glob("*.json"), *SCENES.glob("*.svg"), *SCENES.glob("*.html")]
                    if not p.stem.startswith("_")})
 
 
 def scene_file(name: str) -> Path | None:
-    for ext in (".py", ".svg", ".json"):
+    for ext in (".py", ".svg", ".json", ".html"):
         p = SCENES / f"{name}{ext}"
         if p.exists():
             return p
@@ -102,6 +107,8 @@ def load(name: str):
         import vector_scene
         data = json.loads(p.read_text(encoding="utf-8"))
         return data.get("title", name), vector_scene.build(data), 1.0
+    if p.suffix == ".html":
+        return None                                   # rendered in headless Edge by runner.py
     if p.suffix == ".svg":
         import svg_import
         title, steps = svg_import.load_svg(p.read_text(encoding="utf-8"))
@@ -602,7 +609,7 @@ class Studio:
 
     def open_code_file(self):
         from tkinter import filedialog
-        p = filedialog.askopenfilename(filetypes=[("كود صورة", "*.py *.svg *.txt"), ("الكل", "*.*")])
+        p = filedialog.askopenfilename(filetypes=[("كود صورة", "*.py *.svg *.html *.txt"), ("الكل", "*.*")])
         if p:
             self.load_code_text(Path(p).read_text(encoding="utf-8-sig", errors="replace"))
 
@@ -626,7 +633,10 @@ class Studio:
                                            icon="warning", default="no", parent=self.code_win):
             return
         CODE.mkdir(exist_ok=True)
-        f = CODE / ("last.svg" if code.lstrip().startswith("<") else "last.py")
+        low = code.lstrip()[:4000].lower()
+        ext = ".html" if low.startswith("<") and ("<!doctype html" in low or "<html" in low or "<script" in low) else \
+            ".svg" if low.startswith("<") else ".py"
+        f = CODE / f"last{ext}"
         f.write_text(code, encoding="utf-8")
         self.err_box.configure(state="normal")
         self.err_box.delete("1.0", "end")
@@ -642,7 +652,10 @@ class Studio:
         if not name:
             return
         name = re.sub(r"[^\w-]+", "_", name.strip())
-        (SCENES / f"{name}{'.svg' if code.lstrip().startswith('<') else '.py'}").write_text(code, encoding="utf-8")
+        low = code.lstrip()[:4000].lower()
+        ext = ".html" if low.startswith("<") and ("<!doctype html" in low or "<html" in low or "<script" in low) else \
+            ".svg" if low.startswith("<") else ".py"
+        (SCENES / f"{name}{ext}").write_text(code, encoding="utf-8")
         self.scene_box.configure(values=scenes())
         self.status.set(f"حُفظ المشهد {name}، وصار في قائمة المشاهد.")
 
@@ -707,14 +720,14 @@ class Studio:
             p = Path(clip[0])
             if p.suffix.lower() in IMAGE_TYPES:
                 self.open_image(path=str(p))
-            elif p.suffix.lower() in (".py", ".svg", ".txt"):
+            elif p.suffix.lower() in (".py", ".svg", ".html", ".htm", ".txt"):
                 self.open_code(p.read_text(encoding="utf-8-sig", errors="replace"), run=True)
             return
         try:
             text = self.root.clipboard_get()
         except self.tk.TclError:
             return
-        if "<svg" in text or re.search(r"\b(import|from|def|ImageDraw|turtle|plt)\b", text):
+        if "<svg" in text or "<html" in text.lower() or re.search(r"\b(import|from|def|ImageDraw|turtle|plt)\b", text):
             self.open_code(text, run=True)
 
     def export_image_code(self, path: str | None = None):

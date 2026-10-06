@@ -35,6 +35,19 @@ exactly right is completed. Verified on a 900×900 ad (3,394 polygons, 0 differi
 Opened in the studio, the program's own polygons are drawn in the code's order and then the details.
 `--data-only` gives the older pure-data form, which the studio reads without running anything.
 
+## Real 3D (HTML / Three.js) and film
+
+Inspired by [HyperFrames](https://github.com/heygen-com/hyperframes): write HTML, render deterministic frames. Paste
+a Three.js page into the code panel (or open `scenes/*.html`): `html_render.py` renders one frame in headless Edge
+(WebGL through SwiftShader; waits for `window.__ready`), and the studio paints that frame pixel by pixel, checks it,
+and can write its Python program. Physically based materials, shadows, fog, bloom and tone mapping come from the
+browser's renderer, so this is the path for photographic realism, and it exports at any size because HTML is
+resolution independent. `scenes/whale_dragon_3d.html` is the showcase. Contract: `window.__ready = true` when the
+frame is drawn; `window.render(t)` and `window.__duration` for animation.
+
+`film.py` makes videos with FFmpeg: `film.py drawing <scene>` records the picture forming pixel by pixel;
+`film.py animate page.html` seeks `render(t)` frame by frame (a scene file can define `build_t(t)` instead).
+
 ## Realism: primitives, a guide and a measured gate
 
 `render.py` now has `shade` (form shading toward a light), `noise` (fractal texture: skin, rock, water, clouds)
@@ -140,12 +153,14 @@ for matplotlib code.
 | `runner.py` | Runs code from any AI in its own process and records PIL commands in order |
 | `exact.py` | Exact redraw: blocking in → refining → final touches, ending identical to the original. For photos, the plan is chosen by Jev |
 | `to_python.py` | Image → standalone Pillow program (polygons + embedded original), identical output |
+| `html_render.py` | HTML/Three.js page → PNG in headless Edge (Playwright or Edge's own screenshot) |
+| `film.py` | Drawing films and animations to MP4 via FFmpeg |
 | `judge.py` | Realism gate: measured flat fills, hard edges, colours, tonal range; calibrated thresholds; Jev reads the numbers |
 | `references/drawing-guide.md` | The agent's guide: prompt or image → code, scene language, realism recipe, review loop |
 | `jev_client.py` | Jev, the fast judge: asks twice in parallel with the options reversed and averages the answers. If Jev is unreachable, a deterministic rule decides |
 | `vectorize.py` | Image → vector colour layers (+ SVG). Logos: true colours with exact edges. Photos: 24 colours |
 | `vector_scene.py` | Builds the drawing steps from a traced image |
-| `scenes/` | `dragon_girl.py`, `duck_dragon.py`, `whale_dragon.py` (realism showcase, built with judge.py). Traced images and saved code land here too |
+| `scenes/` | `dragon_girl.py`, `duck_dragon.py`, `whale_dragon.py`, `whale_dragon_3d.html` (Three.js). Traced images and saved code land here too |
 | `examples/` | AI-style examples: a PIL house, an SVG rocket, a matplotlib flower, and code with a deliberate error |
 
 ## Measured on this machine

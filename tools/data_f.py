@@ -6,10 +6,10 @@ dict(n="109", slug="pixel-studio-painter", ar="استوديو الرسم بال�
       "(SVG أو بايثون PIL أو matplotlib أو turtle أو مشهد KOSIF بالإضاءة والتوهّج)، ويسجّل أوامر PIL ليرسمها "
       "بترتيب الكود نفسه. يعيد رسم أي صورة مرفوعة من الصفر لتنتهي مطابقة للأصل تماماً (صفر بيكسل مختلف، ويتحقق "
       "بنفسه، ويختار Jev خطة الرسم للصور الفوتوغرافية)، أو يحوّلها إلى أشكال متجهة وSVG تُكبَّر بلا فقد. ويصدّر بدقة 3840×2560.",
- trig_ar=["ارسم الصورة بالبيكسل", "ارسم كود الصورة", "أعد رسم الصورة", "مطابق للأصل", "حوّل الصورة إلى متجه",
+ trig_ar=["ارسم الصورة بالبيكسل", "ارسم كود الصورة", "أعد رسم الصورة", "مطابق للأصل", "حوّل الصورة إلى متجه", "مشهد ثلاثي الأبعاد", "فيلم الرسم",
           "ارسم SVG", "رسم من كود بايثون", "صورة تتكبّر بلا فقد", "برنامج رسم", "ارسم مشهداً بالكود"],
  trig_en=["draw this code", "redraw this image", "pixel by pixel", "exact redraw", "vectorize image", "trace logo",
-          "render svg", "draw with pil", "image to svg", "drawing program"],
+          "render svg", "draw with pil", "image to svg", "drawing program", "three.js scene", "html to video", "drawing film"],
  pipeline=[
      "حدّد المدخل: كود SVG، أو بايثون يرسم (PIL / matplotlib / turtle)، أو مشهد KOSIF (دالة build() ترجع Step)، "
      "أو صورة يُطلب أن يكون رسمها «مطابقاً 100%» أو «متجهاً قابلاً للتكبير».",
@@ -24,6 +24,9 @@ dict(n="109", slug="pixel-studio-painter", ar="استوديو الرسم بال�
      "لكود يعيد الصورة مطابقة: زر «📤 كود الصورة» أو studio.py --image-code يكتب برنامج بايثون مستقلاً (Pillow فقط): "
      "scripts/to_python.py يرسم أشكال الصورة بـ draw.polygon بألوانها ثم يكمل كل بيكسل من الأصل المضمّن ويتحقق بنفسه. "
      "يعمل بـ python name.py في أي مكان، وفي الاستوديو يُرسم بترتيب الكود. الصيغة البيانية (--data-only) تُقرأ بلا تنفيذ.",
+     "للواقعية ثلاثية الأبعاد (فكرة HyperFrames): اكتب صفحة HTML بـ Three.js بالعقد window.__ready/render(t)؛ scripts/html_render.py "
+     "يرسم إطاراً حتمياً في Edge الخفي، وrunner.py (نوع html) يرسمه بيكسلاً ببيكسل ويعطي كوده؛ scripts/film.py drawing/animate يصنع MP4 بـ ffmpeg. "
+     "الموجّه في references/drawing-guide.md يربط كل طلب بمساره.",
      "لبرومبت واقعي: اتبع references/drawing-guide.md: لغة المشهد كاملة، وصفة الواقعية (shade + noise + rim لكل شكل، "
      "ثلاثة أضواء، عمق جوي، grade/vignette/grain)، ثم قِس النتيجة بـ scripts/judge.py (المسطّح < 30%، الحواف الحادة < 55%، "
      "الألوان > 900، مدى القيم > 150، وحكم Jev من الأرقام) وراجع قصاصات 1:1، وكرّر 2–4 جولات.",
@@ -32,7 +35,7 @@ dict(n="109", slug="pixel-studio-painter", ar="استوديو الرسم بال�
      "اكتب المشاهد السينمائية في scripts/scenes/<name>.py: أشكال path وtube وellipse، وإضاءة glow وrim، ونص عربي "
      "مُشكَّل text، ثم grade وvignette وgrain. اختبر لقطة ثابتة بـ --render وافحصها قبل فتح النافذة.",
      "تحقّق في النهاية: شريط الحالة يعرض «✅ مطابقة للأصل 100%» وعدد البيكسل، ثم شغّل "
-     "python -m unittest discover -s tests من scripts/ (25 اختباراً)."],
+     "python -m unittest discover -s tests من scripts/ (30 اختباراً)."],
  gates=["الوضع المطابق ينتهي بصفر بيكسل مختلف عن الأصل (الدالة exact.mismatches == 0)، وإلا فلا تقل «مطابق».",
         "كود PIL يُرسم بدقته الأصلية بلا تحجيم، ويطابق final.png الذي أنتجه الكود نفسه.",
         "لا تشغيل لكود فيه أوامر خطرة بلا موافقة المستخدم الصريحة.",

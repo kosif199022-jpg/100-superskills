@@ -276,6 +276,45 @@ class JevPlan(unittest.TestCase):
         self.assertEqual(weights, sorted(weights, reverse=True), labels)
 
 
+class Html(unittest.TestCase):
+    """HTML pages render in headless Edge and are painted like an exact frame; skipped where no browser exists."""
+
+    def test_html_kind_is_recognised(self):
+        import runner
+        self.assertEqual(runner.kind_of("<!doctype html><html><body><script>1</script></body></html>"), "html")
+        self.assertEqual(runner.kind_of("<svg xmlns='x'><rect/></svg>"), "svg")
+
+    def test_a_page_renders_to_the_pixels_it_draws(self):
+        import html_render
+        try:
+            html_render.browser_path()
+        except RuntimeError:
+            self.skipTest("no Edge/Chrome")
+        tmp = Path(tempfile.mkdtemp())
+        (tmp / "p.html").write_text('<!doctype html><html><body style="margin:0;background:#102030">'
+                                    '<div style="position:absolute;left:100px;top:50px;width:200px;height:100px;background:#ff3300"></div>'
+                                    '<script>window.__ready=true</script></body></html>', encoding="utf-8")
+        info = html_render.render_html(tmp / "p.html", tmp / "p.png", 400, 200)
+        im = Image.open(tmp / "p.png").convert("RGB")
+        self.assertEqual(im.size, (400, 200), info)
+        self.assertEqual(im.getpixel((200, 100)), (255, 51, 0))
+        self.assertEqual(im.getpixel((20, 20)), (16, 32, 48))
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+class Film(unittest.TestCase):
+    def test_drawing_film_encodes(self):
+        import film
+        if not shutil.which("ffmpeg"):
+            self.skipTest("no ffmpeg")
+        tmp = Path(tempfile.mkdtemp())
+        (tmp / "s.py").write_text("def build():\n    return [Step('a', [fill(rect(0, 0, 1200, 800), '#204060')]), Step('b', [fill(ellipse(600, 400, 200, 200), '#ffcc00')], 'grow', origin=(600, 400))]\n", encoding="utf-8")
+        info = film.film_drawing(str(tmp / "s.py"), tmp / "s.mp4", fps=12, speed="fast", hold=0.2)
+        self.assertTrue((tmp / "s.mp4").exists() and (tmp / "s.mp4").stat().st_size > 1000, info)
+        self.assertGreater(info["frames"], 3)
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 class Runner(unittest.TestCase):
     """Code from any AI runs in its own process and comes back as paint jobs."""
 

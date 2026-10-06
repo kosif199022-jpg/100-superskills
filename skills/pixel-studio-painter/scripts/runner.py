@@ -45,8 +45,11 @@ CALLS_AR = {"rectangle": "مستطيل", "rounded_rectangle": "مستطيل مس
 def kind_of(code: str) -> str:
     if re.search(r"^IMAGE_B64\s*=", code, re.M) and not re.search(r"^\s*(def |draw\.|img\.|for |while )", code, re.M):
         return "image"                                    # data only: TITLE / SIZE / IMAGE_B64
-    s = code.lstrip("﻿ \t\r\n")
-    if s.startswith("<") and "<svg" in s[:4000].lower():
+    s = code.lstrip("\ufeff \t\r\n")
+    low = s[:4000].lower()
+    if s.startswith("<") and ("<!doctype html" in low or "<html" in low or "<canvas" in low or "<script" in low):
+        return "html"
+    if s.startswith("<") and "<svg" in low:
         return "svg"
     if re.search(r"^\s*def\s+build\s*\(", code, re.M):
         return "scene"
@@ -123,6 +126,52 @@ def read_image_code(code: str) -> tuple[str, bytes]:
     if "IMAGE_B64" not in vals:
         raise ValueError("IMAGE_B64 must be a plain string")
     return str(vals.get("TITLE", "صورة")), base64.b64decode("".join(str(vals["IMAGE_B64"]).split()))
+
+
+def run_html(code_file: Path, out: Path, width: int = 1200, height: int = 800, t: float | None = None) -> dict:
+    """An HTML page (Three.js, WebGL, CSS): rendered once in headless Edge at the studio's sheet size, saved as the
+    reference, then painted from a blank canvas (plan chosen by Jev) and finished to the exact frame."""
+    import exact
+    import html_render
+    frame = out / "frame.png"
+    info = html_render.render_html(code_file, frame, width, height, t)
+    im = Image.open(frame)
+    im.load()
+    rgba = np.ascontiguousarray(np.asarray(im.convert("RGBA")))
+    Image.fromarray(rgba, "RGBA").save(out / "final.png")
+    h, w = rgba.shape[:2]
+    nj = NativeJobs(out, w, h)
+    block_k, fine_k, plan = exact.choose_plan(rgba)
+    for label, kind, origin, weight, order, cols in exact.plan(rgba, block_k, fine_k):
+        nj.add_raw(label, kind, origin, weight, order, cols)
+    p = {k: plan[k] for k in ("by", "choice", "probabilities")} if plan else None
+    if plan:
+        p["candidate"] = plan["candidates"][plan["choice"]]
+    return {"title": info.get("title") or "HTML", "kind": "html", "raster": False, "jobs": nj.n, "plan": p,
+            "render": {k: v for k, v in info.items() if k != "file"}, "final": im}
+
+
+def run_html(code_file: Path, out: Path, width: int = 1200, height: int = 800, t: float | None = None) -> dict:
+    """An HTML page (Three.js, WebGL, CSS): rendered once in headless Edge at the studio's sheet size, saved as the
+    reference, then painted from a blank canvas (plan chosen by Jev) and finished to the exact frame."""
+    import exact
+    import html_render
+    frame = out / "frame.png"
+    info = html_render.render_html(code_file, frame, width, height, t)
+    im = Image.open(frame)
+    im.load()
+    rgba = np.ascontiguousarray(np.asarray(im.convert("RGBA")))
+    Image.fromarray(rgba, "RGBA").save(out / "final.png")
+    h, w = rgba.shape[:2]
+    nj = NativeJobs(out, w, h)
+    block_k, fine_k, plan = exact.choose_plan(rgba)
+    for label, kind, origin, weight, order, cols in exact.plan(rgba, block_k, fine_k):
+        nj.add_raw(label, kind, origin, weight, order, cols)
+    p = {k: plan[k] for k in ("by", "choice", "probabilities")} if plan else None
+    if plan:
+        p["candidate"] = plan["candidates"][plan["choice"]]
+    return {"title": info.get("title") or "HTML", "kind": "html", "raster": False, "jobs": nj.n, "plan": p,
+            "render": {k: v for k, v in info.items() if k != "file"}, "final": im}
 
 
 def run_image_code(code: str, out: Path) -> dict:
@@ -408,7 +457,8 @@ def main():
     a = ap.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    code = Path(a.code).read_text(encoding="utf-8-sig")
+    code_path = Path(a.code).resolve()
+    code = code_path.read_text(encoding="utf-8-sig")
     workdir = Path(tempfile.mkdtemp(prefix="kosif_code_"))
     os.chdir(workdir)                     # files the code writes land in a scratch folder, not next to the studio
     jobs = Jobs(out, a.scale)
@@ -417,6 +467,16 @@ def main():
         if kind == "image":
             steps, rolloff = None, 1.0
             info = run_image_code(code, out)
+            jobs.n = info["jobs"]
+        elif kind == "html":
+            steps, rolloff = None, 1.0
+            info = run_html(code_path, out, round(R.W0 * (a.scale if a.export else 1.0)),
+                            round(R.H0 * (a.scale if a.export else 1.0)))
+            jobs.n = info["jobs"]
+        elif kind == "html":
+            steps, rolloff = None, 1.0
+            info = run_html(code_path, out, round(R.W0 * (a.scale if a.export else 1.0)),
+                            round(R.H0 * (a.scale if a.export else 1.0)))
             jobs.n = info["jobs"]
         elif kind == "svg":
             import svg_import
@@ -436,6 +496,10 @@ def main():
         if a.export:
             if steps is not None:
                 R.render_image(steps, a.scale, ss=2 if a.scale > 2 else 3, rolloff=rolloff).save(a.export)
+            elif kind == "html":
+                info["final"].convert("RGB").save(a.export)      # HTML is resolution independent: re-rendered at --scale
+            elif kind == "html":
+                info["final"].convert("RGB").save(a.export)      # HTML is resolution independent: re-rendered at --scale
             else:
                 info["final"].save(a.export)                     # raster code: its own resolution, exactly
         elif steps is not None:
