@@ -291,6 +291,7 @@ class Studio:
         ttk.Button(bar, text="📝  كود", command=self.open_code).pack(side="left", padx=(14, 2))
         ttk.Button(bar, text="🖼  صورة", command=self.open_image).pack(side="left", padx=2)
         ttk.Button(bar, text="📤  كود الصورة", command=self.export_image_code).pack(side="left", padx=2)
+        ttk.Button(bar, text="🧩  تعديل بالذكاء", command=self.copy_edit_package).pack(side="left", padx=2)
         self.image_mode = tk.StringVar(value=EXACT)
         ttk.Combobox(bar, textvariable=self.image_mode, values=[EXACT, VECTOR], width=16,
                      state="readonly").pack(side="left", padx=2)
@@ -324,6 +325,7 @@ class Studio:
         self.native = None                                 # an image painted at its own resolution
         self.reference = None                              # what that image must end up identical to
         self.code_win = None
+        self.original = None                               # the image file behind the current picture, if any
         self.last_info: dict = {}
         if scene:
             self.root.after(300, self.start)
@@ -570,6 +572,7 @@ class Studio:
             ttk.Button(row, text="💾  حفظ كمشهد", command=self.save_code_as_scene).pack(side="right", padx=2)
             ttk.Button(row, text="🧹  مسح", command=lambda: self.code_text.delete("1.0", "end")).pack(side="right", padx=2)
             ttk.Button(row, text="🤖  انسخ تعليمات للذكاء الاصطناعي", command=self.copy_ai_prompt).pack(side="left", padx=2)
+            ttk.Button(row, text="🧩  حزمة التعديل", command=self.copy_edit_package).pack(side="left", padx=2)
             ex = sorted(p.name for p in (HERE / "examples").glob("*") if p.suffix in (".py", ".svg"))
             if ex:
                 self.example = tk.StringVar(value="أمثلة…")
@@ -647,10 +650,60 @@ class Studio:
         self.status.set("نُسخت التعليمات: الصقها في أي ذكاء اصطناعي، واكتب وصف صورتك مكان [اكتب وصف الصورة هنا]، "
                         "ثم الصق الكود الذي يعطيك إياه هنا.")
 
+    def _clean_code(self, code: str) -> str | None:
+        """Strip the ``` fences AIs add, and put the original image back in place of an edit-program key."""
+        import edit_pack
+        code = re.sub(r"^```[\w-]*\s*\n|\n```\s*$", "", code.strip())
+        try:
+            code, restored = edit_pack.restore(code)
+        except FileNotFoundError as e:
+            self.status.set(f"⚠ {e}")
+            return None
+        if restored:
+            self.status.set("🧩 أُعيدت الصورة الأصلية إلى برنامج التعديل.")
+        return code
+
+    def copy_edit_package(self):
+        """🧩: instructions + what the picture contains + a small edit program, copied as one text for any AI;
+        the program is also opened in the panel. The AI returns the program with edits; ▶ draws the result."""
+        from tkinter import filedialog, simpledialog
+        import edit_pack
+        src = self.original if (self.source[0] == "image" and self.original and Path(self.original).exists()) else None
+        if src is None:
+            p = filedialog.askopenfilename(title="اختر الصورة التي تريد تعديلها",
+                                           filetypes=[("صور", " ".join("*" + e for e in IMAGE_TYPES)), ("الكل", "*.*")])
+            if not p:
+                return
+            src = Path(p)
+        parent = self.code_win if self.code_win and self.code_win.winfo_exists() else self.root
+        req = simpledialog.askstring("ما التعديل؟", "اكتب التعديل الذي تريده من الذكاء الاصطناعي (يمكنك تركه فارغاً):",
+                                     parent=parent) or ""
+        name = re.sub(r"[^\w-]+", "_", Path(src).stem) or "image"
+        self.status.set("🧩 يحضّر حزمة التعديل: يصف الصورة ويكتب برنامج التعديل...")
+
+        def work():
+            try:
+                pack = edit_pack.package(src, name, req)
+                program, _ = edit_pack.edit_program(src, name)
+            except Exception as e:
+                self.root.after(0, lambda: self.status.set(f"تعذّر تحضير الحزمة: {e}"))
+                return
+
+            def done():
+                self.root.clipboard_clear()
+                self.root.clipboard_append(pack)
+                self.root.update()
+                self.open_code(program)
+                self.status.set(f"🧩 نُسخت حزمة التعديل ({len(pack):,} حرفاً). الصقها في Claude أو أي ذكاء اصطناعي، "
+                                "خذ البرنامج الذي يعيده، الصقه هنا، واضغط «ارسم الكود».")
+            self.root.after(0, done)
+        threading.Thread(target=work, daemon=True).start()
+
     def run_code(self):
         from tkinter import messagebox
-        code = self.code_text.get("1.0", "end").strip()
-        code = re.sub(r"^```[\w-]*\s*\n|\n```\s*$", "", code)        # AIs often wrap code in ``` fences
+        code = self._clean_code(self.code_text.get("1.0", "end"))
+        if code is None:
+            return
         if not code:
             self.status.set("الصق كوداً أولاً.")
             return
@@ -673,7 +726,7 @@ class Studio:
 
     def save_code_as_scene(self):
         from tkinter import simpledialog
-        code = self.code_text.get("1.0", "end").strip()
+        code = self._clean_code(self.code_text.get("1.0", "end"))
         if not code:
             return
         name = simpledialog.askstring("حفظ كمشهد", "اسم المشهد (بالإنجليزية، بدون مسافات):", parent=self.code_win)

@@ -387,6 +387,69 @@ class Runner(unittest.TestCase):
         self.assertIn("bluee", err)
 
 
+class EditPack(unittest.TestCase):
+    """🧩: the package an AI edits, the key the studio restores, and an edit confined to its region."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        im = Image.new("RGB", (200, 120), "#204060")
+        ImageDraw.Draw(im).rectangle([40, 30, 120, 90], fill="#8a8a8a")        # the grey shirt
+        im.save(self.tmp / "me.png")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_package_has_instructions_description_request_and_program(self):
+        import edit_pack
+        pack = edit_pack.package(self.tmp / "me.png", "me", "غيّر لون القميص إلى الأحمر")
+        for part in ("# EDITS START", "# EDITS END", "## وصف الصورة", "غيّر لون القميص إلى الأحمر", "<<KOSIF:ORIGINAL:",
+                     "200×120", "recolor("):
+            self.assertIn(part, pack)
+        self.assertNotIn("iVBOR", pack)                                       # the image itself is not in the package
+
+    def test_edit_program_is_restored_run_and_confined_to_the_region(self):
+        import edit_pack
+        import runner
+        program, sha = edit_pack.edit_program(self.tmp / "me.png", "me")
+        self.assertEqual(runner.kind_of(program), "python")                  # tools inside: it runs, not read as data
+        self.assertEqual(studio.risky(program), [])
+        edited = program.replace("\n# EDITS END", '\nrecolor(img, "#8a8a8a", "#c0392b", tolerance=30, region=(30, 20, 130, 100))\n# EDITS END')
+        edited = edited.replace(f'IMAGE_B64 = "<<KOSIF:ORIGINAL:{sha}>>"', f"IMAGE_B64 = '<<KOSIF:ORIGINAL:{sha}>>'  # key")
+        with self.assertRaises(SystemExit):                                   # the key alone cannot run
+            exec(compile(edited, "<edit>", "exec"), {"__name__": "__main__"})
+        code, restored = edit_pack.restore(edited)                            # however the AI quoted the key line
+        self.assertTrue(restored)
+        self.assertNotIn("<<KOSIF:ORIGINAL:" + sha, code)
+        self.assertIn("IMAGE_B64 = (\n", code)
+        (self.tmp / "e.py").write_text(code, encoding="utf-8")
+        r = subprocess.run([sys.executable, "e.py"], cwd=self.tmp, capture_output=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = np.asarray(Image.open(self.tmp / "me_edited.png").convert("RGB")).astype(int)
+        self.assertLessEqual(int(np.abs(out[60, 80] - (0xc0, 0x39, 0x2b)).max()), 3)   # the shirt is red now (HSV rounding)
+        self.assertEqual(tuple(out[10, 10]), (0x20, 0x40, 0x60))               # the background is untouched
+        with self.assertRaises(FileNotFoundError):
+            edit_pack.restore('IMAGE_B64 = "<<KOSIF:ORIGINAL:0000000000000000>>"')
+
+    def test_edited_program_is_painted_by_the_runner_original_first(self):
+        import edit_pack
+        program, _ = edit_pack.edit_program(self.tmp / "me.png", "me")
+        code, _ = edit_pack.restore(program.replace("\n# EDITS END", '\nrecolor(img, "#8a8a8a", "#2ecc71", 30)\n# EDITS END'))
+        (self.tmp / "e.py").write_text(code, encoding="utf-8")
+        out = self.tmp / "run"
+        subprocess.run([sys.executable, str(HERE / "runner.py"), str(self.tmp / "e.py"), str(out)], capture_output=True, timeout=240)
+        jobs = sorted(out.glob("job_*.npz"))
+        self.assertGreaterEqual(len(jobs), 2)                                 # the original, then the edit
+        c = json.loads((out / "canvas.json").read_text(encoding="utf-8"))
+        canvas = np.zeros((c["w"] * c["h"], 4), np.uint8)
+        for f in jobs:
+            with np.load(f) as z:
+                canvas[z["order"]] = z["cols"]
+        final = np.asarray(Image.open(out / "final.png").convert("RGBA")).reshape(-1, 4)
+        self.assertEqual(int(np.any(canvas != final, axis=1).sum()), 0)
+        px = final.reshape(c["h"], c["w"], 4)[60, 80, :3].astype(int)
+        self.assertLessEqual(int(np.abs(px - (0x2e, 0xcc, 0x71)).max()), 3)
+
+
 class Studio(unittest.TestCase):
     def test_scenes_and_loading(self):
         self.assertIn("dragon_girl", studio.scenes())

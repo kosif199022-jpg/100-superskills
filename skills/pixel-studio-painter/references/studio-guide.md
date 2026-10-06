@@ -111,6 +111,24 @@ Press **"🤖 انسخ تعليمات للذكاء الاصطناعي"** in the 
 Gemini, Claude or any other AI, write your picture's description in the brackets, then paste the code it gives
 you back into the panel. The panel strips the ``` fences AIs wrap around code.
 
+### Editing a picture with any AI (🧩)
+
+Open a picture (or any image) and press **"🧩 تعديل بالذكاء"** (also in the code panel as "🧩 حزمة التعديل"). Type
+what you want changed, e.g. "make the shirt red". The studio copies **one package** to the clipboard:
+
+1. instructions for the AI (edit only between `# EDITS START` / `# EDITS END`, return the whole program);
+2. a description of what the picture contains — every colour layer with its colour, share, bounding box and centre,
+   so the AI knows *which* grey is the shirt and where it is;
+3. your request;
+4. a small Pillow program with ready tools: `recolor` (keeps folds and shadows), `adjust`, `tint`, `paint`, `write`,
+   `erase`, `flip`, plus a `draw` for free drawing.
+
+The original image is **not** inside the package (an AI could not read megabytes of base64); the program holds a
+key `<<KOSIF:ORIGINAL:…>>` instead, and the original's bytes stay in `code/originals/`. Paste the package into
+Claude, ChatGPT or any AI, paste the program it returns into the code panel, press ▶: the studio puts the original
+back in place of the key, runs the program, paints the original first and then the edit. Press 🧩 again on the
+result to continue editing. `python edit_pack.py photo.jpg "make the shirt red"` prints the same package.
+
 ### Safety
 
 Pasted code runs **on your computer with your permissions**. It runs in a separate process with a 120-second
