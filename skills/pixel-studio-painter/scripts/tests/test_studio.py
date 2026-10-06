@@ -232,6 +232,39 @@ class Runner(unittest.TestCase):
         self.assertEqual((c["w"], c["h"]), (800, 600))
         self.assertEqual(int(np.any(canvas != final, axis=1).sum()), 0)
 
+    def test_image_code_is_drawn_identical_to_the_original(self):
+        tmp = Path(tempfile.mkdtemp())
+        Image.fromarray(sample_logo(), "RGBA").save(tmp / "logo.png")
+        (tmp / "logo_code.py").write_text(studio.image_code(tmp / "logo.png", "logo"), encoding="utf-8")
+        out = tmp / "run"
+        subprocess.run([sys.executable, str(HERE / "runner.py"), str(tmp / "logo_code.py"), str(out)],
+                       capture_output=True, timeout=240)
+        c = json.loads((out / "canvas.json").read_text(encoding="utf-8"))
+        info = json.loads((out / "done.json").read_text(encoding="utf-8"))
+        canvas = np.zeros((c["w"] * c["h"], 4), np.uint8)
+        for f in sorted(out.glob("job_*.npz")):
+            with np.load(f) as z:
+                canvas[z["order"]] = z["cols"]
+        original = np.asarray(Image.open(tmp / "logo.png").convert("RGBA")).reshape(-1, 4)
+        shutil.rmtree(tmp, ignore_errors=True)
+        self.assertEqual(info["kind"], "image")
+        self.assertGreater(info["jobs"], 1)
+        self.assertEqual(int(np.any(canvas != original, axis=1).sum()), 0)
+
+    def test_image_code_is_read_as_data_and_never_executed(self):
+        import base64
+        import io
+        import runner
+        buf = io.BytesIO()
+        Image.new("RGB", (4, 3), "red").save(buf, "PNG")
+        b64 = base64.b64encode(buf.getvalue()).decode()
+        code = "\n".join(['import os', 'os.remove("nothing-here")', 'TITLE = "t"', f'IMAGE_B64 = "{b64}"', ''])
+        self.assertEqual(runner.kind_of(code), "image")
+        title, data = runner.read_image_code(code)              # would raise if os.remove had run
+        self.assertEqual((title, Image.open(io.BytesIO(data)).size), ("t", (4, 3)))
+        with self.assertRaises(ValueError):
+            runner.read_image_code('IMAGE_B64 = open("x").read()')
+
     def test_broken_code_reports_the_real_error(self):
         rc, info, err, _ = self.run_code("broken_code.py")
         self.assertNotEqual(rc, 0)

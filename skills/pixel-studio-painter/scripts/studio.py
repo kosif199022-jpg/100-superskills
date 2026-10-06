@@ -109,6 +109,21 @@ def load(name: str):
     return ns.get("TITLE", name), ns["build"](), ns.get("ROLLOFF", 0.82)
 
 
+def image_code(path: Path, title: str) -> str:
+    """Code for an image: the original file's own bytes, embedded. The studio paints it from nothing and ends
+    identical to the original; the code needs nothing else, so it works the same on any machine."""
+    import base64
+    data = Path(path).read_bytes()
+    with Image.open(path) as im:
+        w, h = im.size
+    b64 = base64.b64encode(data).decode("ascii")
+    body = "\n".join(f'    "{b64[i:i + 100]}"' for i in range(0, len(b64), 100))
+    return (f"# KOSIF Studio: كود الصورة «{title}».\n"
+            "# يرسمها البرنامج من ورقة فارغة بيكسلاً ببيكسل (الكتل ثم التدقيق ثم اللمسات الدقيقة)،\n"
+            "# وتنتهي مطابقة للأصل تماماً. الصورة الأصلية محفوظة داخل الكود، فهو يعمل وحده على أي جهاز.\n"
+            f"TITLE = {title!r}\nSIZE = ({w}, {h})\nIMAGE_B64 = (\n{body}\n)\n")
+
+
 def risky(code: str) -> list[str]:
     if code.lstrip().startswith("<"):
         return []                                         # SVG is data, not code
@@ -247,6 +262,7 @@ class Studio:
         ttk.Combobox(bar, textvariable=self.speed, values=list(SPEEDS), width=7, state="readonly").pack(side="left")
         ttk.Button(bar, text="📝  كود", command=self.open_code).pack(side="left", padx=(14, 2))
         ttk.Button(bar, text="🖼  صورة", command=self.open_image).pack(side="left", padx=2)
+        ttk.Button(bar, text="📤  كود الصورة", command=self.export_image_code).pack(side="left", padx=2)
         self.image_mode = tk.StringVar(value=EXACT)
         ttk.Combobox(bar, textvariable=self.image_mode, values=[EXACT, VECTOR], width=16,
                      state="readonly").pack(side="left", padx=2)
@@ -393,6 +409,12 @@ class Studio:
                 kind, val = item
                 if kind == "done":
                     self.last_info = val
+                    p = val.get("plan")
+                    if p and p.get("candidate"):
+                        c = p["candidate"]
+                        who = (f"ثقة Jev {round(p['probabilities'][p['choice']] * 100)}٪"
+                               if p["by"] == "jev" else "بالقاعدة: Jev غير متاح")
+                        self.info.set(f"🧠 الخطة: {c['block_colours']} لوناً ثم {c['refine_tones']} درجة ({who})")
                     self.title, self.steps_total = val.get("title", self.title), val.get("jobs", self.steps_total)
                 elif kind == "canvas":
                     self.set_native(*val)
@@ -402,9 +424,9 @@ class Studio:
                     self.status.set(val)
                 elif kind == "plan":
                     c = val["candidates"][val["choice"]]
-                    who = (f"اختارها Jev بثقة {round(val['probabilities'][val['choice']] * 100)} بالمئة"
-                           if val["by"] == "jev" else "اختارتها القاعدة لأن Jev غير متاح")
-                    self.info.set(f"🧠 خطة الرسم: {c['block_colours']} لوناً للكتل ثم {c['refine_tones']} درجة للتدقيق، {who}")
+                    who = (f"ثقة Jev {round(val['probabilities'][val['choice']] * 100)}٪"
+                           if val["by"] == "jev" else "بالقاعدة: Jev غير متاح")
+                    self.info.set(f"🧠 الخطة: {c['block_colours']} لوناً ثم {c['refine_tones']} درجة ({who})")
                 else:
                     self.show_error(val)
                 self.root.after(1, self.tick)
@@ -469,7 +491,7 @@ class Studio:
                 bad = exact.mismatches(img, self.reference)
                 total = nv["w"] * nv["h"]
                 plan = self.info.get()
-                self.info.set((f"✅ مطابقة للأصل تماماً: كل البيكسلات ({total:,}) مثل الأصل" if bad == 0 else
+                self.info.set((f"✅ مطابقة للأصل تماماً ({total:,} بيكسل)" if bad == 0 else
                                f"⚠ {bad:,} بيكسل يختلف عن الأصل") + (f"   ·   {plan[2:]}" if plan else ""))
         self.status.set(msg)
 
@@ -599,14 +621,17 @@ class Studio:
             if not path:
                 return
         SOURCES.mkdir(exist_ok=True)
+        self.original = None
         if image is not None:
             name = time.strftime("clip_%Y%m%d_%H%M%S")
             src = SOURCES / f"{name}.png"
             image.save(src)
+            self.original = src
         else:
             name = re.sub(r"[^\w-]+", "_", Path(path).stem) or "image"
             src = SOURCES / f"{name}.png"
             Image.open(path).save(src)                  # decoded pixels kept losslessly: the reference to match
+            self.original = Path(path)                  # the file itself, for 📤 image code
         if self.image_mode.get() == EXACT:
             self.start_exact(src, name)
             return
@@ -657,6 +682,25 @@ class Studio:
             return
         if "<svg" in text or re.search(r"\b(import|from|def|ImageDraw|turtle|plt)\b", text):
             self.open_code(text, run=True)
+
+    def export_image_code(self, path: str | None = None):
+        """📤: the code of an image (the open one, or one you pick). Pasted into any KOSIF Studio it paints the
+        picture from nothing and ends identical to the original."""
+        from tkinter import filedialog
+        src = Path(path) if path else getattr(self, "original", None) if self.source[0] == "image" else None
+        if src is None or not src.exists():
+            p = filedialog.askopenfilename(title="اختر الصورة التي تريد كودها",
+                                           filetypes=[("صور", " ".join("*" + e for e in IMAGE_TYPES)), ("الكل", "*.*")])
+            if not p:
+                return
+            src = Path(p)
+        name = re.sub(r"[^\w-]+", "_", src.stem) or "image"
+        OUT.mkdir(exist_ok=True)
+        code = image_code(src, name)
+        f = OUT / f"{name}_code.py"
+        f.write_text(code, encoding="utf-8")
+        self.open_code(code)
+        self.status.set(f"📤 كود الصورة جاهز ({len(code) // 1024:,} ك.ب): {f}. اضغط «ارسم الكود» ليرسمها مطابقة للأصل.")
 
     # ── files ────────────────────────────────────────────────────────────────────────────────────────────
     def save_png(self):
@@ -723,6 +767,7 @@ def main():
     ap.add_argument("--scale", type=float, default=1.0, help="1.0 = 1200x800, 3.2 = 3840x2560")
     ap.add_argument("--trace", metavar="IMAGE", help="vectorize an image into scenes/<name>.json (+ out/<name>.svg)")
     ap.add_argument("--image", metavar="IMAGE", help="open the studio and redraw this image")
+    ap.add_argument("--image-code", metavar="IMAGE", help="no window: write the code of this image to out/<name>_code.py")
     ap.add_argument("--code", metavar="FILE", help="open the studio and draw this code file (SVG/PIL/matplotlib/turtle/scene)")
     ap.add_argument("--name", help="scene name for --trace (default: the image's file name)")
     ap.add_argument("--title", help="title shown while drawing a traced scene")
@@ -740,6 +785,13 @@ def main():
         print(f"traced {a.trace} -> scenes/{name}.json + out/{name}.svg: {len(data['layers'])} colours, "
               f"{pts} points, {time.perf_counter() - t:.1f}s")
         a.scene = name
+    if a.image_code:
+        name = re.sub(r"[^\w-]+", "_", Path(a.image_code).stem) or "image"
+        OUT.mkdir(exist_ok=True)
+        f = OUT / f"{name}_code.py"
+        f.write_text(image_code(Path(a.image_code), name), encoding="utf-8")
+        print(f"{f}: {f.stat().st_size // 1024:,} KB")
+        return
     speed = {"slow": "بطيء", "normal": "عادي", "fast": "سريع", "instant": "فوري"}.get(a.speed, a.speed)
     if a.render:
         t = time.perf_counter()

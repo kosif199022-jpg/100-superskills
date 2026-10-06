@@ -43,6 +43,8 @@ CALLS_AR = {"rectangle": "مستطيل", "rounded_rectangle": "مستطيل مس
 
 
 def kind_of(code: str) -> str:
+    if re.search(r"^IMAGE_B64\s*=", code, re.M):
+        return "image"
     s = code.lstrip("﻿ \t\r\n")
     if s.startswith("<") and "<svg" in s[:4000].lower():
         return "svg"
@@ -97,6 +99,50 @@ class NativeJobs(Jobs):
         os.replace(str(base) + ".tmp.npz", str(base) + ".npz")
         self.prev = flat.copy()
         self.n += 1
+
+    def add_raw(self, label: str, order: str, origin, weight: float, idx: np.ndarray, cols: np.ndarray):
+        """A job already in painting order (exact redraw)."""
+        base = self.out / f"job_{self.n:04d}"
+        np.savez(str(base) + ".tmp.npz", order=idx.astype(np.int32), cols=cols)
+        Path(str(base) + ".json").write_text(json.dumps({"label": label, "order": order, "origin": origin,
+                                                         "weight": weight}, ensure_ascii=False), encoding="utf-8")
+        os.replace(str(base) + ".tmp.npz", str(base) + ".npz")
+        self.n += 1
+
+
+def read_image_code(code: str) -> tuple[str, bytes]:
+    """The title and the picture embedded in image code. Only literal assignments are read (ast.literal_eval):
+    nothing in the file is executed."""
+    import ast
+    import base64
+    vals = {}
+    for node in ast.parse(code).body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                and node.targets[0].id in ("TITLE", "IMAGE_B64"):
+            vals[node.targets[0].id] = ast.literal_eval(node.value)
+    if "IMAGE_B64" not in vals:
+        raise ValueError("IMAGE_B64 must be a plain string")
+    return str(vals.get("TITLE", "صورة")), base64.b64decode("".join(str(vals["IMAGE_B64"]).split()))
+
+
+def run_image_code(code: str, out: Path) -> dict:
+    """Image code: paint the embedded picture from a blank sheet (Jev picks the plan for photos) and end
+    identical to it; final.png is the reference the studio checks against."""
+    import exact
+    title, data = read_image_code(code)
+    im = Image.open(io.BytesIO(data))
+    im.load()
+    rgba = np.ascontiguousarray(np.asarray(im.convert("RGBA")))
+    Image.fromarray(rgba, "RGBA").save(out / "final.png")
+    h, w = rgba.shape[:2]
+    nj = NativeJobs(out, w, h)
+    block_k, fine_k, info = exact.choose_plan(rgba)
+    for label, kind, origin, weight, order, cols in exact.plan(rgba, block_k, fine_k):
+        nj.add_raw(label, kind, origin, weight, order, cols)
+    plan = {k: info[k] for k in ("by", "choice", "probabilities")} if info else None
+    if info:
+        plan["candidate"] = info["candidates"][info["choice"]]
+    return {"title": title, "kind": "image", "raster": True, "jobs": nj.n, "plan": plan, "final": im}
 
 
 def play_steps(steps, jobs: Jobs, rolloff: float):
@@ -368,7 +414,11 @@ def main():
     jobs = Jobs(out, a.scale)
     try:
         kind = kind_of(code)
-        if kind == "svg":
+        if kind == "image":
+            steps, rolloff = None, 1.0
+            info = run_image_code(code, out)
+            jobs.n = info["jobs"]
+        elif kind == "svg":
             import svg_import
             title, steps = svg_import.load_svg(code)
             info = {"title": title, "kind": "svg", "raster": False}

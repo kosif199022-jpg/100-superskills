@@ -25,6 +25,18 @@ The kinds of code it accepts:
 - **All Python code** (PIL, matplotlib, turtle) is drawn at the **picture's own size, without resampling**, and
   ends identical to what the code itself produces. The studio checks this at the end.
 
+## 📤 Image code: code that redraws an image identically
+
+Code written from a description, by any AI or by hand, is a redrawing. It can come close to a photo but never
+match it. For an identical result, press **"📤 كود الصورة"** (or run `python studio.py --image-code photo.jpg`).
+
+You get a self-contained code file with **the original image's own bytes embedded**. Pasted or opened in any
+KOSIF Studio, it is drawn from a blank sheet pixel by pixel. For photos Jev chooses the plan, and the drawing
+ends **identical to the original**, checked at the end. Verified on a 900×900 ad: **0 differing pixels** from the
+original JPEG, in 30 steps.
+
+The code is read as data only (`ast.literal_eval`). Nothing in it is executed, so a command inside it cannot run.
+
 ## Exact match with the original ("مطابق تماماً")
 
 The image is painted from a blank, transparent sheet the way a painter works, in three stages:
@@ -93,7 +105,7 @@ python studio.py dragon_girl --render out/x.png --scale 3.2   # no window: 3840x
 ```
 
 ```bash
-python -m unittest discover -s tests     # 20 tests
+python -m unittest discover -s tests     # 22 tests
 ```
 
 Requirements: Python 3.11+, Pillow, numpy, opencv-python, arabic-reshaper, python-bidi. matplotlib is needed only
