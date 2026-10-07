@@ -71,3 +71,22 @@ Arabic-safe), `drawPath` (pen stroke, optional arrowhead) / `flowDash` (moving c
 `register`, `shim`. `motion.py new` scaffolds a project with the kit and GSAP copied in; `frames` renders key
 frames for the 8-second gate; `check` runs HyperFrames' gate; `render` picks the engine; `measure` reports motion
 energy (near-still share, peak, mean, longest freeze); `ambience.py` synthesises a deterministic soundtrack.
+
+## Cinematic 3D compositions (Three.js) — the realism path
+
+- Write the scene as an ES module (`src/main.js`) importing `three` and its `examples/jsm` addons; `motion.py bundle`
+  turns it into one classic script (`assets/main.bundle.js`) that loads from file:// in any renderer.
+- Everything is a function of `t`: sun elevation/azimuth, sea `time`, cloud cover, particle phases, camera keys.
+  `composer.render(0)` with `FilmPass.uniforms.time = t`; no `Clock`, no `Math.random` (seeded Perlin / mulberry32).
+- Building blocks that read as real: `Sky` (Preetham) + `ACESFilmicToneMapping` exposure; `Water` with a generated
+  normal map (reflects the sky, sun glitter); terrain from seeded ridged FBM with slope/height vertex colours, shadows
+  from the sun light; a raymarched cloud slab (36 steps, 3 light taps) on a box mesh; `Points` with seeded phases for
+  vapour and rain (size capped, faded near the lens); `EffectComposer`: bloom (0.22 / 0.6 / 0.9), `BokehPass`
+  (aperture 4e-5, maxblur 0.0035), grade + vignette ShaderPass, `FilmPass(0.16)`, `OutputPass`.
+- Lighting lessons: a sun in front of the lens only at sunrise, then swing it to a side key; a camera-side fill light
+  (no shadows) for valleys; keep exposure ≈ 0.5–0.62 and bloom threshold ≥ 0.9 or the frame whites out; lightning as
+  a 2-frame spike of light + exposure, not a full-frame flash.
+- GPU: `html_render.GPU_FLAGS` uses `--use-angle=d3d11`; `HTML_RENDER_SOFTWARE=1` forces SwiftShader. This machine:
+  ~1.0–1.5 s per 1080p frame including the screenshot (≈ 10 min for 17 s at 30 fps).
+- HyperFrames' own runtime drives GSAP/CSS, not a custom WebGL render loop; render 3D compositions with the studio
+  engine (`motion.py render --engine studio`), which also muxes the `<audio>` clips.

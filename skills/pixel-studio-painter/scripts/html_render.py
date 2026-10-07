@@ -21,8 +21,13 @@ from pathlib import Path
 EDGES = [r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
          r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
          r"C:\Program Files\Google\Chrome\Application\chrome.exe"]
-GPU_FLAGS = ["--headless=new", "--hide-scrollbars", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
-             "--ignore-gpu-blocklist", "--disable-gpu-sandbox", "--autoplay-policy=no-user-gesture-required"]
+# Measured on this machine (Intel Iris Xe): a 64-step 1080p raymarch frame = 142 ms with the real GPU through
+# ANGLE/D3D11, 4335 ms on SwiftShader. The GPU is the default; HTML_RENDER_SOFTWARE=1 forces SwiftShader.
+_SOFT = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+_HARD = ["--use-angle=d3d11", "--use-gl=angle", "--enable-gpu-rasterization", "--enable-webgl"]
+GPU_FLAGS = ["--headless=new", "--hide-scrollbars", *(_SOFT if os.environ.get("HTML_RENDER_SOFTWARE") else _HARD),
+             "--ignore-gpu-blocklist", "--disable-gpu-sandbox", "--autoplay-policy=no-user-gesture-required",
+             "--allow-file-access-from-files"]
 
 
 def browser_path() -> str:

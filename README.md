@@ -177,7 +177,7 @@
 
 | # | المهارة | Skill | ماذا تفعل |
 |---|---|---|---|
-| 110 | [استوديو الأنيميشن الاحترافي (HyperFrames + KOSIF Motion)](skills/hyperframes-animation-studio/SKILL.md) | `hyperframes-animation-studio` | أنيميشن احترافي بمدة محددة من طلب واحد: تركيب HTML واحد (صيغة HyperFrames: data-composition-id/width/height/du… |
+| 110 | [استوديو الأنيميشن الاحترافي (HyperFrames + KOSIF Motion)](skills/hyperframes-animation-studio/SKILL.md) | `hyperframes-animation-studio` | أنيميشن احترافي سينمائي بمدة محددة من طلب واحد — مسطّح (SVG/GSAP) أو ثلاثي الأبعاد واقعي (Three.js على GPU الج… |
 
 ## الفهرس العميق
 

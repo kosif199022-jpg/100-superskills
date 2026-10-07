@@ -40,7 +40,7 @@
       mask.style.cssText = "display:inline-block;overflow:hidden;vertical-align:bottom;padding:.06em .04em .18em;margin-bottom:-.18em";   // room for Arabic descenders
       const inner = document.createElement("span");
       inner.className = "mk-wi";
-      inner.style.cssText = "display:inline-block;will-change:transform";
+      inner.style.cssText = "display:inline-block";
       inner.textContent = w;
       mask.appendChild(inner);
       target.appendChild(mask);

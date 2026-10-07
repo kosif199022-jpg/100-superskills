@@ -87,6 +87,23 @@ def sync_assets(d: Path):
         shutil.copy2(GSAP, d / "assets" / "gsap.min.js")
 
 
+def bundle(name: str, entry: str = "src/main.js", out: str = "assets/main.bundle.js") -> Path:
+    """Three.js (or any ES-module) scene → one classic script with esbuild, so the composition loads from file://
+    in both renderers without CORS or a dev server."""
+    d = project_dir(name)
+    esb = HERE / "node_modules" / "esbuild" / "bin" / "esbuild"
+    if not esb.exists():
+        raise SystemExit("esbuild is not installed here: npm install esbuild three  (in motion/)")
+    node = shutil.which("node")
+    target = d / out
+    r = subprocess.run([node, str(esb), str(d / entry), "--bundle", "--format=iife", "--minify", "--target=es2020",
+                        f"--outfile={target}"], cwd=HERE, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if r.returncode != 0:
+        raise SystemExit(r.stderr[-1500:])
+    print(target, f"{target.stat().st_size // 1024} KB")
+    return target
+
+
 def frames(name: str, times: list[float], out: Path | None) -> list[Path]:
     """Key frames through the studio's own renderer (headless Edge; window.render(t) from the kit's shim)."""
     import html_render
@@ -135,9 +152,52 @@ def render(name: str, engine: str, quality: str, fps: int | None, out: Path | No
     else:
         import film
         film.film_animate(str(index), out, fps=fps or 30, seconds=duration_of(index), size=_size(index))
+        mux_audio(index, out)
     print(json.dumps({"file": str(out), "engine": "hyperframes" if use_hf else "studio", "seconds": round(time.perf_counter() - t0, 1),
                       "mb": round(out.stat().st_size / 1e6, 2)}, ensure_ascii=False))
     return out
+
+
+def mux_audio(index: Path, video: Path):
+    """The composition's <audio> clips (src, data-start, data-volume, data-fade-out) mixed into the studio-rendered video,
+    the way HyperFrames does it for its own renders."""
+    import re
+    html = index.read_text(encoding="utf-8")
+    clips = []
+    for m in re.finditer(r"<audio\b[^>]*>", html):
+        tag = m.group(0)
+        src = re.search(r'src="([^"]+)"', tag)
+        if not src:
+            continue
+        f = (index.parent / src.group(1)).resolve()
+        if not f.exists():
+            continue
+        g = lambda k, d: float(re.search(rf'data-{k}="([\d.]+)"', tag).group(1)) if re.search(rf'data-{k}="([\d.]+)"', tag) else d
+        clips.append((f, g("start", 0.0), g("duration", 0.0), g("volume", 1.0), g("fade-out", 0.0), g("fade-in", 0.0)))
+    if not clips or not shutil.which("ffmpeg"):
+        return
+    dur = duration_of(index)
+    args = ["ffmpeg", "-y", "-v", "error", "-i", str(video)]
+    filters, labels = [], []
+    for i, (f, start, d, vol, fo, fi) in enumerate(clips):
+        args += ["-i", str(f)]
+        fl = f"[{i + 1}:a]volume={vol}"
+        if fi:
+            fl += f",afade=t=in:st=0:d={fi}"
+        if fo and d:
+            fl += f",afade=t=out:st={max(0.0, d - fo)}:d={fo}"
+        fl += f",adelay={int(start * 1000)}|{int(start * 1000)}[a{i}]"
+        filters.append(fl)
+        labels.append(f"[a{i}]")
+    mix = f"{''.join(labels)}amix=inputs={len(clips)}:normalize=0[aout]" if len(clips) > 1 else f"{labels[0]}anull[aout]"
+    tmp = video.with_suffix(".tmp.mp4")
+    args += ["-filter_complex", ";".join(filters + [mix]), "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+             "-t", str(dur), "-movflags", "+faststart", str(tmp)]
+    r = subprocess.run(args, capture_output=True, text=True)
+    if r.returncode == 0 and tmp.exists():
+        tmp.replace(video)
+    else:
+        print("audio mux skipped:", (r.stderr or "")[-300:])
 
 
 def _size(index: Path) -> tuple[int, int]:
@@ -201,8 +261,11 @@ def main():
     p = sub.add_parser("measure"); p.add_argument("film"); p.add_argument("--fps", type=int, default=15)
     sub.add_parser("doctor")
     p = sub.add_parser("sync"); p.add_argument("project")
+    p = sub.add_parser("bundle"); p.add_argument("project"); p.add_argument("--entry", default="src/main.js"); p.add_argument("--out", default="assets/main.bundle.js")
     a = ap.parse_args()
-    if a.cmd == "new":
+    if a.cmd == "bundle":
+        bundle(a.project, a.entry, a.out)
+    elif a.cmd == "new":
         new(a.name, a.seconds, a.fps, a.size, a.title)
     elif a.cmd == "frames":
         frames(a.project, [float(v) for v in a.times.split(",")], Path(a.out) if a.out else None)

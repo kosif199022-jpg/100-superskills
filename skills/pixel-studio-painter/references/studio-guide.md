@@ -148,7 +148,14 @@ python motion/motion.py measure out/rocket.mp4                          # motion
 python motion/ambience.py out.wav --seconds 6 --whoosh 0.5 --chords 0:A # a deterministic soundtrack
 ```
 
-`motion/projects/water_cycle/` is the showcase: 17 s, five scenes (dawn, evaporation, condensation, precipitation,
+**Cinematic 3D** is the same pipeline with a Three.js scene: `motion/projects/water_cycle_3d/` (sky model with a
+rising sun, a reflective sea, PBR terrain with shadows, raymarched volumetric clouds, vapour and rain particles,
+a river that grows along its valley, lightning, bloom / depth of field / grain / grade), all driven by `t`,
+bundled with `motion.py bundle` (esbuild) and rendered on the machine's GPU: headless Edge through ANGLE/D3D11
+renders a heavy 1080p frame in ~0.15 s where SwiftShader needs 4 s, so a 17 s film takes minutes, not hours.
+The studio engine muxes the composition's `<audio>` clips into the MP4.
+
+`motion/projects/water_cycle/` is the flat showcase: 17 s, five scenes (dawn, evaporation, condensation, precipitation,
 collection, the loop), synthesised ambience, checked and rendered by HyperFrames. `motion/references/` holds the
 authoring contract as the checker enforces it and a distilled 500-tool catalog.
 
@@ -185,7 +192,7 @@ python ai_bridge.py                      # which AI the studio can reach right n
 ```
 
 ```bash
-python -m unittest discover -s tests     # 38 tests
+python -m unittest discover -s tests     # 42 tests
 ```
 
 Requirements: Python 3.11+, Pillow, numpy, opencv-python, arabic-reshaper, python-bidi. matplotlib only for

@@ -2,7 +2,7 @@
 """100 مهارة خارقة — 110: استوديو الأنيميشن الاحترافي (HyperFrames + KOSIF Motion)."""
 G = [
 dict(n="110", slug="hyperframes-animation-studio", ar="استوديو الأنيميشن الاحترافي (HyperFrames + KOSIF Motion)", en="HyperFrames Animation Studio",
- desc="أنيميشن احترافي بمدة محددة من طلب واحد: تركيب HTML واحد (صيغة HyperFrames: data-composition-id/width/height/duration، "
+ desc="أنيميشن احترافي سينمائي بمدة محددة من طلب واحد — مسطّح (SVG/GSAP) أو ثلاثي الأبعاد واقعي (Three.js على GPU الجهاز): تركيب HTML واحد (صيغة HyperFrames: data-composition-id/width/height/duration، "
       "وخطوط GSAP الزمنية في window.__timelines بالثواني) مع عدّة KOSIF Motion (نص عربي بأقنعة كلمات، قلم يرسم المسارات، مطر وبخار "
       "وبريق بعشوائية مبذورة، كاميرا واحدة تتحرك ككتلة، وميض، حبيبات فيلم وفينييت) وصوت محيط مركّب بـ numpy؛ يُصيَّر حتمياً إطاراً بإطار "
       "بـ HyperFrames (Puppeteer + FFmpeg) أو بمصيّر KOSIF Studio (Playwright/Edge) من الملف نفسه، ويمرّ ببوابة الثماني ثوانٍ (إطارات مفتاحية "
@@ -12,8 +12,13 @@ dict(n="110", slug="hyperframes-animation-studio", ar="استوديو الأني
  trig_en=["make an animation", "professional animation", "5 second animation", "motion graphics video", "explainer animation", "hyperframes",
           "html to video", "gsap timeline video", "animated explainer", "render mp4 from html", "kinetic typography arabic"],
  pipeline=[
-     "المدة والصيغة أولاً: ثوانٍ وfps وأبعاد (1920×1080 أو 1080×1920)؛ ثم قائمة مشاهد 4–7 بجمل فعلية (حدث فيزيائي لكل مشهد) بأزمنتها، "
-     "وجسم حامل واحد يمرّ عبر المشاهد، و2–3 حركات كاميرا مسمّاة لا غير (قواعد المهارة 105).",
+     "الإخراج قبل المؤثر (منهج KOSIF Motion Director في references/motion-director.md): حدّد الجمهور والشعور والمخرج والمدة، ثم 2–3 اتجاهات بصرية مختلفة حقاً "
+     "لكل منها استعارة من الموضوع وتكوين وسلوك مميز ومقايضة؛ اختر واحداً واكتب: الأطروحة (جملة)، الموتيف المتكرر، التكوين، المادة (خطوط، لون، ضوء، سقف عمق)، الحركة (إيقاع، تمهيد، أين يسكن).",
+     "المدة والصيغة: ثوانٍ وfps وأبعاد؛ ثم قائمة مشاهد 4–7 بجمل فعلية بأزمنتها، وجسم حامل واحد، و2–3 حركات كاميرا مسمّاة، ثم «نوتة الحركة»: لكل إيقاع "
+     "الموضوع/الغرض، حالة البداية، حالة النهاية، المدة/التأخير، التمهيد، المحفّز، البديل، سلوك المقاطعة.",
+     "اختر أصغر تنفيذ قادر: CSS/WAAPI للحالات البسيطة، GSAP للخطوط المنسّقة، SVG للرسوم والمسارات، Three.js لتكوين فضائي حقيقي بإضاءة وكاميرا "
+     "(الواقعية السينمائية: Sky model، ماء عاكس، سحب حجمية raymarch، تضاريس PBR بظلال، DOF وbloom وحبيبات وتدرّج لوني؛ تُحزَّم بـ motion.py bundle عبر esbuild "
+     "وتُصيَّر على GPU الجهاز: --use-angle=d3d11 في Edge الخفي = 30× أسرع من SwiftShader). المثال: examples/water_cycle_3d.",
      "python scripts/motion.py new NAME --seconds N --fps 30 --size 1920x1080 --title «…» يُنشئ projects/NAME/index.html من القالب مع "
      "assets/motion-kit.js وassets/gsap.min.js (بعد npm install hyperframes gsap في scripts/).",
      "اكتب التركيب: كل حركة على خط GSAP واحد مُوقَف (paused) بالثواني (المعامل الثالث موضع مطلق)؛ سجّل window.__timelines['root'] = tl حرفياً؛ "
@@ -30,7 +35,7 @@ dict(n="110", slug="hyperframes-animation-studio", ar="استوديو الأني
      "ووضع الذاكرة المنخفضة على 8 GB)، وإلا مصيّر الاستوديو (film.py animate). --resolution 4k لرفع DPR بلا تغيير التركيب.",
      "القياس: python scripts/motion.py measure out/NAME.mp4 — حصة الإطارات شبه الساكنة، الذروة، المتوسط، أطول تجميد؛ الأرضية: سكون قليل، "
      "لا قفزة واحدة ضخمة، شيء يتحرك دائماً (أرقام المرجع في 105/motion_energy.py إن وُجد مرجع).",
-     "التسليم: MP4 + index.html المصدر + لوحة الإطارات + تقرير القياس، مع ذكر المحرّك الذي صيّر والمدة والحجم."],
+     "التسليم بإيصال أدلة: الاتجاه المختار والتنفيذ، الإطارات المصيَّرة فعلاً، ما اختُبر، وما لم يُختبر أو ما عطّل؛ لا توحِ باختبار أو مراجعة لم تحدث. MP4 + index.html المصدر + لوحة الإطارات + تقرير القياس + المحرّك والمدة والحجم."],
  gates=["قائمة المشاهد بأزمنتها قبل أي كود، والمدة المطلوبة تساوي data-duration بالضبط.",
         "فحص HyperFrames يمرّ بصفر أخطاء، أو يُذكر صراحةً أن التصيير تم بمصيّر الاستوديو مع سبب.",
         "لوحة إطارات مفتاحية فُحصت بالعين قبل التصيير الكامل.",
@@ -38,6 +43,6 @@ dict(n="110", slug="hyperframes-animation-studio", ar="استوديو الأني
         "النص العربي بكلمات متصلة (أقنعة كلمات لا حروف) وتباين ≥ 3:1 على خلفيته.",
         "لا أصول من CDN وقت التصيير؛ GSAP والعدّة نسختان محليتان في assets/."],
  outputs=["projects/<name>/index.html", "projects/<name>/assets/ (motion-kit.js, gsap.min.js, ambience.wav)", "frames/ + sheet.png", "out/<name>.mp4", "measure.json"],
- kw=["hyperframes", "gsap", "html video", "motion graphics", "animation", "puppeteer", "ffmpeg", "deterministic render", "arabic typography",
+ kw=["hyperframes", "gsap", "three.js", "cinematic", "volumetric clouds", "html video", "motion graphics", "animation", "puppeteer", "ffmpeg", "deterministic render", "arabic typography",
      "explainer", "water cycle", "kinetic", "svg animation"], scripts=True),
 ]

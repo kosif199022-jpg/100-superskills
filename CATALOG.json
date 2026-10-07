@@ -6217,7 +6217,7 @@
   "slug": "hyperframes-animation-studio",
   "ar": "استوديو الأنيميشن الاحترافي (HyperFrames + KOSIF Motion)",
   "en": "HyperFrames Animation Studio",
-  "desc": "أنيميشن احترافي بمدة محددة من طلب واحد: تركيب HTML واحد (صيغة HyperFrames: data-composition-id/width/height/duration، وخطوط GSAP الزمنية في window.__timelines بالثواني) مع عدّة KOSIF Motion (نص عربي بأقنعة كلمات، قلم يرسم المسارات، مطر وبخار وبريق بعشوائية مبذورة، كاميرا واحدة تتحرك ككتلة، وميض، حبيبات فيلم وفينييت) وصوت محيط مركّب بـ numpy؛ يُصيَّر حتمياً إطاراً بإطار بـ HyperFrames (Puppeteer + FFmpeg) أو بمصيّر KOSIF Studio (Playwright/Edge) من الملف نفسه، ويمرّ ببوابة الثماني ثوانٍ (إطارات مفتاحية تُفحص بالعين)، وفحص HyperFrames (lint + تشغيل + تباين)، وقياس طاقة الحركة؛ مبني على دليل 500 أداة لإنتاج الفيديو حول HyperFrames.",
+  "desc": "أنيميشن احترافي سينمائي بمدة محددة من طلب واحد — مسطّح (SVG/GSAP) أو ثلاثي الأبعاد واقعي (Three.js على GPU الجهاز): تركيب HTML واحد (صيغة HyperFrames: data-composition-id/width/height/duration، وخطوط GSAP الزمنية في window.__timelines بالثواني) مع عدّة KOSIF Motion (نص عربي بأقنعة كلمات، قلم يرسم المسارات، مطر وبخار وبريق بعشوائية مبذورة، كاميرا واحدة تتحرك ككتلة، وميض، حبيبات فيلم وفينييت) وصوت محيط مركّب بـ numpy؛ يُصيَّر حتمياً إطاراً بإطار بـ HyperFrames (Puppeteer + FFmpeg) أو بمصيّر KOSIF Studio (Playwright/Edge) من الملف نفسه، ويمرّ ببوابة الثماني ثوانٍ (إطارات مفتاحية تُفحص بالعين)، وفحص HyperFrames (lint + تشغيل + تباين)، وقياس طاقة الحركة؛ مبني على دليل 500 أداة لإنتاج الفيديو حول HyperFrames.",
   "sources": [
    {
     "name": "gsap",

@@ -39,7 +39,7 @@ dict(n="109", slug="pixel-studio-painter", ar="استوديو الرسم بال�
      "اكتب المشاهد السينمائية في scripts/scenes/<name>.py: أشكال path وtube وellipse، وإضاءة glow وrim، ونص عربي "
      "مُشكَّل text، ثم grade وvignette وgrain. اختبر لقطة ثابتة بـ --render وافحصها قبل فتح النافذة.",
      "تحقّق في النهاية: شريط الحالة يعرض «✅ مطابقة للأصل 100%» وعدد البيكسل، ثم شغّل "
-     "python -m unittest discover -s tests من scripts/ (38 اختباراً)."],
+     "python -m unittest discover -s tests من scripts/ (42 اختباراً)."],
  gates=["الوضع المطابق ينتهي بصفر بيكسل مختلف عن الأصل (الدالة exact.mismatches == 0)، وإلا فلا تقل «مطابق».",
         "كود PIL يُرسم بدقته الأصلية بلا تحجيم، ويطابق final.png الذي أنتجه الكود نفسه.",
         "لا تشغيل لكود فيه أوامر خطرة بلا موافقة المستخدم الصريحة.",

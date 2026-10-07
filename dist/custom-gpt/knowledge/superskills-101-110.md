@@ -613,7 +613,7 @@
 9. لبرومبت واقعي: اتبع references/drawing-guide.md: لغة المشهد كاملة، وصفة الواقعية (shade + noise + rim لكل شكل، ثلاثة أضواء، عمق جوي، grade/vignette/grain)، ثم قِس النتيجة بـ scripts/judge.py (المسطّح < 30%، الحواف الحادة < 55%، الألوان > 900، مدى القيم > 150، وحكم Jev من الأرقام) وراجع قصاصات 1:1، وكرّر 2–4 جولات.
 10. للتكبير بلا فقد: scripts/vectorize.py يتتبّع الصورة. للشعار ألوانه الحقيقية مع اختبار المزج المجاور، وللصورة الفوتوغرافية k-means بـ 24 لوناً. ثم SVG وتصدير 3840×2560.
 11. اكتب المشاهد السينمائية في scripts/scenes/<name>.py: أشكال path وtube وellipse، وإضاءة glow وrim، ونص عربي مُشكَّل text، ثم grade وvignette وgrain. اختبر لقطة ثابتة بـ --render وافحصها قبل فتح النافذة.
-12. تحقّق في النهاية: شريط الحالة يعرض «✅ مطابقة للأصل 100%» وعدد البيكسل، ثم شغّل python -m unittest discover -s tests من scripts/ (38 اختباراً).
+12. تحقّق في النهاية: شريط الحالة يعرض «✅ مطابقة للأصل 100%» وعدد البيكسل، ثم شغّل python -m unittest discover -s tests من scripts/ (42 اختباراً).
 
 ## بوابات الجودة (لا تسليم قبل المرور)
 
@@ -684,7 +684,7 @@
 
 # 110 · استوديو الأنيميشن الاحترافي (HyperFrames + KOSIF Motion) — HyperFrames Animation Studio
 
-أنيميشن احترافي بمدة محددة من طلب واحد: تركيب HTML واحد (صيغة HyperFrames: data-composition-id/width/height/duration، وخطوط GSAP الزمنية في window.__timelines بالثواني) مع عدّة KOSIF Motion (نص عربي بأقنعة كلمات، قلم يرسم المسارات، مطر وبخار وبريق بعشوائية مبذورة، كاميرا واحدة تتحرك ككتلة، وميض، حبيبات فيلم وفينييت) وصوت محيط مركّب بـ numpy؛ يُصيَّر حتمياً إطاراً بإطار بـ HyperFrames (Puppeteer + FFmpeg) أو بمصيّر KOSIF Studio (Playwright/Edge) من الملف نفسه، ويمرّ ببوابة الثماني ثوانٍ (إطارات مفتاحية تُفحص بالعين)، وفحص HyperFrames (lint + تشغيل + تباين)، وقياس طاقة الحركة؛ مبني على دليل 500 أداة لإنتاج الفيديو حول HyperFrames.
+أنيميشن احترافي سينمائي بمدة محددة من طلب واحد — مسطّح (SVG/GSAP) أو ثلاثي الأبعاد واقعي (Three.js على GPU الجهاز): تركيب HTML واحد (صيغة HyperFrames: data-composition-id/width/height/duration، وخطوط GSAP الزمنية في window.__timelines بالثواني) مع عدّة KOSIF Motion (نص عربي بأقنعة كلمات، قلم يرسم المسارات، مطر وبخار وبريق بعشوائية مبذورة، كاميرا واحدة تتحرك ككتلة، وميض، حبيبات فيلم وفينييت) وصوت محيط مركّب بـ numpy؛ يُصيَّر حتمياً إطاراً بإطار بـ HyperFrames (Puppeteer + FFmpeg) أو بمصيّر KOSIF Studio (Playwright/Edge) من الملف نفسه، ويمرّ ببوابة الثماني ثوانٍ (إطارات مفتاحية تُفحص بالعين)، وفحص HyperFrames (lint + تشغيل + تباين)، وقياس طاقة الحركة؛ مبني على دليل 500 أداة لإنتاج الفيديو حول HyperFrames.
 
 ## متى تُستخدم
 
@@ -693,16 +693,18 @@
 
 ## خط الإنتاج (بالترتيب)
 
-1. المدة والصيغة أولاً: ثوانٍ وfps وأبعاد (1920×1080 أو 1080×1920)؛ ثم قائمة مشاهد 4–7 بجمل فعلية (حدث فيزيائي لكل مشهد) بأزمنتها، وجسم حامل واحد يمرّ عبر المشاهد، و2–3 حركات كاميرا مسمّاة لا غير (قواعد المهارة 105).
-2. python scripts/motion.py new NAME --seconds N --fps 30 --size 1920x1080 --title «…» يُنشئ projects/NAME/index.html من القالب مع assets/motion-kit.js وassets/gsap.min.js (بعد npm install hyperframes gsap في scripts/).
-3. اكتب التركيب: كل حركة على خط GSAP واحد مُوقَف (paused) بالثواني (المعامل الثالث موضع مطلق)؛ سجّل window.__timelines['root'] = tl حرفياً؛ MOTION.shim('root', N) ليعمل الملف أيضاً بمصيّر الاستوديو. الأدوات: revealWords/hideWords (أقنعة كلمات صالحة للعربية)، drawPath (مع رأس سهم يهبط عند الوصول) وflowDash، rain/vapour/sparkle ببذرة، camera (المسرح كتلة واحدة)، flash، grain، vignette. أربع تمهيدات فقط: slam/snap/drive/settle.
-4. ممنوعات يثبتها فاحص HyperFrames: dir=rtl على <html> (فيديو أسود صامت) — direction: rtl على عناصر النص فقط؛ <audio> بلا id صامت؛ أسماء خطوط بلا @font-face؛ Math.random وsetTimeout وrequestAnimationFrame للحالة؛ fromTo بحالة from مرئية لعنصر يجب أن يبقى مخفياً؛ marker-end للأسهم.
-5. الصوت: python scripts/ambience.py assets/ambience.wav --seconds N --rain t0:t1 --thunder t --whoosh t1,t2 --chords 0:A,6:F — صوت محيط حتمي (بحر، ريح، وسادة أوتار، مطر، رعد، ووش) مُفتاح إلى الثواني نفسها؛ يُدرج <audio id=… data-start data-duration data-volume>.
-6. بوابة الثماني ثوانٍ: python scripts/motion.py frames NAME --times 1,4,7,… يرسم إطارات مفتاحية؛ اصنع لوحة واحدة وافحصها بالعين: أسهم شاردة، حواف المسرح عند تحريك الكاميرا، تداخل النصوص، نص يتجاوز قناعه، تباين النص على الخلفية؛ أصلح ثم أعد.
-7. python scripts/motion.py check NAME = npx hyperframes check: صفر ✗ قبل التصيير (lint + تشغيل في Chrome الخفي + تخطيط + تباين WCAG).
-8. python scripts/motion.py render NAME --engine auto --quality looks --fps 30 --out out/NAME.mp4: HyperFrames إن كان مثبتاً (عامل واحد ووضع الذاكرة المنخفضة على 8 GB)، وإلا مصيّر الاستوديو (film.py animate). --resolution 4k لرفع DPR بلا تغيير التركيب.
-9. القياس: python scripts/motion.py measure out/NAME.mp4 — حصة الإطارات شبه الساكنة، الذروة، المتوسط، أطول تجميد؛ الأرضية: سكون قليل، لا قفزة واحدة ضخمة، شيء يتحرك دائماً (أرقام المرجع في 105/motion_energy.py إن وُجد مرجع).
-10. التسليم: MP4 + index.html المصدر + لوحة الإطارات + تقرير القياس، مع ذكر المحرّك الذي صيّر والمدة والحجم.
+1. الإخراج قبل المؤثر (منهج KOSIF Motion Director في references/motion-director.md): حدّد الجمهور والشعور والمخرج والمدة، ثم 2–3 اتجاهات بصرية مختلفة حقاً لكل منها استعارة من الموضوع وتكوين وسلوك مميز ومقايضة؛ اختر واحداً واكتب: الأطروحة (جملة)، الموتيف المتكرر، التكوين، المادة (خطوط، لون، ضوء، سقف عمق)، الحركة (إيقاع، تمهيد، أين يسكن).
+2. المدة والصيغة: ثوانٍ وfps وأبعاد؛ ثم قائمة مشاهد 4–7 بجمل فعلية بأزمنتها، وجسم حامل واحد، و2–3 حركات كاميرا مسمّاة، ثم «نوتة الحركة»: لكل إيقاع الموضوع/الغرض، حالة البداية، حالة النهاية، المدة/التأخير، التمهيد، المحفّز، البديل، سلوك المقاطعة.
+3. اختر أصغر تنفيذ قادر: CSS/WAAPI للحالات البسيطة، GSAP للخطوط المنسّقة، SVG للرسوم والمسارات، Three.js لتكوين فضائي حقيقي بإضاءة وكاميرا (الواقعية السينمائية: Sky model، ماء عاكس، سحب حجمية raymarch، تضاريس PBR بظلال، DOF وbloom وحبيبات وتدرّج لوني؛ تُحزَّم بـ motion.py bundle عبر esbuild وتُصيَّر على GPU الجهاز: --use-angle=d3d11 في Edge الخفي = 30× أسرع من SwiftShader). المثال: examples/water_cycle_3d.
+4. python scripts/motion.py new NAME --seconds N --fps 30 --size 1920x1080 --title «…» يُنشئ projects/NAME/index.html من القالب مع assets/motion-kit.js وassets/gsap.min.js (بعد npm install hyperframes gsap في scripts/).
+5. اكتب التركيب: كل حركة على خط GSAP واحد مُوقَف (paused) بالثواني (المعامل الثالث موضع مطلق)؛ سجّل window.__timelines['root'] = tl حرفياً؛ MOTION.shim('root', N) ليعمل الملف أيضاً بمصيّر الاستوديو. الأدوات: revealWords/hideWords (أقنعة كلمات صالحة للعربية)، drawPath (مع رأس سهم يهبط عند الوصول) وflowDash، rain/vapour/sparkle ببذرة، camera (المسرح كتلة واحدة)، flash، grain، vignette. أربع تمهيدات فقط: slam/snap/drive/settle.
+6. ممنوعات يثبتها فاحص HyperFrames: dir=rtl على <html> (فيديو أسود صامت) — direction: rtl على عناصر النص فقط؛ <audio> بلا id صامت؛ أسماء خطوط بلا @font-face؛ Math.random وsetTimeout وrequestAnimationFrame للحالة؛ fromTo بحالة from مرئية لعنصر يجب أن يبقى مخفياً؛ marker-end للأسهم.
+7. الصوت: python scripts/ambience.py assets/ambience.wav --seconds N --rain t0:t1 --thunder t --whoosh t1,t2 --chords 0:A,6:F — صوت محيط حتمي (بحر، ريح، وسادة أوتار، مطر، رعد، ووش) مُفتاح إلى الثواني نفسها؛ يُدرج <audio id=… data-start data-duration data-volume>.
+8. بوابة الثماني ثوانٍ: python scripts/motion.py frames NAME --times 1,4,7,… يرسم إطارات مفتاحية؛ اصنع لوحة واحدة وافحصها بالعين: أسهم شاردة، حواف المسرح عند تحريك الكاميرا، تداخل النصوص، نص يتجاوز قناعه، تباين النص على الخلفية؛ أصلح ثم أعد.
+9. python scripts/motion.py check NAME = npx hyperframes check: صفر ✗ قبل التصيير (lint + تشغيل في Chrome الخفي + تخطيط + تباين WCAG).
+10. python scripts/motion.py render NAME --engine auto --quality looks --fps 30 --out out/NAME.mp4: HyperFrames إن كان مثبتاً (عامل واحد ووضع الذاكرة المنخفضة على 8 GB)، وإلا مصيّر الاستوديو (film.py animate). --resolution 4k لرفع DPR بلا تغيير التركيب.
+11. القياس: python scripts/motion.py measure out/NAME.mp4 — حصة الإطارات شبه الساكنة، الذروة، المتوسط، أطول تجميد؛ الأرضية: سكون قليل، لا قفزة واحدة ضخمة، شيء يتحرك دائماً (أرقام المرجع في 105/motion_energy.py إن وُجد مرجع).
+12. التسليم بإيصال أدلة: الاتجاه المختار والتنفيذ، الإطارات المصيَّرة فعلاً، ما اختُبر، وما لم يُختبر أو ما عطّل؛ لا توحِ باختبار أو مراجعة لم تحدث. MP4 + index.html المصدر + لوحة الإطارات + تقرير القياس + المحرّك والمدة والحجم.
 
 ## بوابات الجودة (لا تسليم قبل المرور)
 

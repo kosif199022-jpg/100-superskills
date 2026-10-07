@@ -582,6 +582,24 @@ class Motion(unittest.TestCase):
         self.assertGreater((tmp / "a.wav").stat().st_size, 100000)
         shutil.rmtree(tmp, ignore_errors=True)
 
+    def test_bundle_and_audio_mux_are_wired(self):
+        sys.path.insert(0, str(HERE / "motion"))
+        import motion
+        self.assertTrue(callable(motion.bundle) and callable(motion.mux_audio))
+        tmp = Path(tempfile.mkdtemp())
+        (tmp / "index.html").write_text('<div data-composition-id="root" data-duration="3"></div>', encoding="utf-8")
+        (tmp / "v.mp4").write_bytes(b"")
+        self.assertIsNone(motion.mux_audio(tmp / "index.html", tmp / "v.mp4"))       # no <audio>: nothing to do, no crash
+        shutil.rmtree(tmp, ignore_errors=True)
+        html = (HERE / "motion" / "projects" / "water_cycle_3d" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("assets/main.bundle.js", html)
+        self.assertIn("window.__three.build", html)
+        src = (HERE / "motion" / "projects" / "water_cycle_3d" / "src" / "main.js").read_text(encoding="utf-8")
+        for part in ("new Sky()", "new Water(", "UnrealBloomPass", "BokehPass", "composer.render(0)"):
+            self.assertIn(part, src)
+        self.assertNotIn("Math.random", src)
+        self.assertNotIn("new THREE.Clock", src)
+
     def test_water_cycle_composition_passes_the_static_rules(self):
         html = (HERE / "motion" / "projects" / "water_cycle" / "index.html").read_text(encoding="utf-8")
         self.assertIn('window.__timelines["root"] = tl', html)
