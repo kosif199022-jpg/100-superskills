@@ -153,7 +153,18 @@ rising sun, a reflective sea, PBR terrain with shadows, raymarched volumetric cl
 a river that grows along its valley, lightning, bloom / depth of field / grain / grade), all driven by `t`,
 bundled with `motion.py bundle` (esbuild) and rendered on the machine's GPU: headless Edge through ANGLE/D3D11
 renders a heavy 1080p frame in ~0.15 s where SwiftShader needs 4 s, so a 17 s film takes minutes, not hours.
-The studio engine muxes the composition's `<audio>` clips into the MP4.
+The studio engine muxes the composition's `<audio>` clips into the MP4 and normalises the mix to −14 LUFS / −1 dBTP;
+`--blur 4` renders four sub-frames per frame on the GPU for a real shutter smear (≈ +30 % time here). The kit's v2
+adds springs (`MOTION.spring`, `track`, `zoomTrack`), a beat clock (`beats`) and clip-path word masks; the craft rules
+distilled from the HyperFrames, Motion Director and LottieFiles skills are in `motion/references/motion-craft.md`.
+
+The 3D blocks live in **`motion/kit/three-kit.js`** (ES module, bundled by esbuild): seeded noise and generated
+textures, `makeRenderer`, `makeSky` (sun by elevation/azimuth), `makeSunLight`/`makeFill`, `makeTerrain` (height function +
+colour rule + tiled detail maps; `alpineColour` built in), `makeForest` (instanced two-tier conifers), `makeSea` (reflective
+Water), `makeRibbon` (a river revealed along a curve), `makeCloudSlab` (raymarched), `makeVapour`/`makeRain`, `makeLensflare`,
+`makePost` (bloom, god rays, DOF, grade/vignette/CA, grain, ACES, `sunOnScreen`), `cameraKeys`, and `makeFrameLoop` (the
+render(t) with GPU sub-frame motion blur). `python motion/motion.py new NAME --3d` scaffolds a film on it; the water-cycle
+scene is ~90 lines on top of the kit and renders pixel-identically to the hand-written version.
 
 `motion/projects/water_cycle/` is the flat showcase: 17 s, five scenes (dawn, evaporation, condensation, precipitation,
 collection, the loop), synthesised ambience, checked and rendered by HyperFrames. `motion/references/` holds the

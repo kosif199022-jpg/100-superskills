@@ -67,14 +67,23 @@ def duration_of(index: Path) -> float:
     return float(m.group(1)) if m else 10.0
 
 
-def new(name: str, seconds: float, fps: int, size: str, title: str) -> Path:
+def new(name: str, seconds: float, fps: int, size: str, title: str, three_d: bool = False) -> Path:
+    """A project from the flat template, or (three_d) from the cinematic 3D template: src/main.js on the three-kit,
+    bundled by `motion.py bundle` before rendering."""
     d = PROJECTS / name
     (d / "assets").mkdir(parents=True, exist_ok=True)
     w, h = (int(v) for v in size.lower().split("x"))
-    html = TEMPLATE.read_text(encoding="utf-8")
-    html = html.replace("{{TITLE}}", title or name).replace("{{W}}", str(w)).replace("{{H}}", str(h)) \
-               .replace("{{SECONDS}}", str(seconds)).replace("{{FPS}}", str(fps))
-    (d / "index.html").write_text(html, encoding="utf-8")
+    fill = lambda s: (s.replace("{{TITLE}}", title or name).replace("{{W}}", str(w)).replace("{{H}}", str(h))
+                       .replace("{{SECONDS}}", str(seconds)).replace("{{FPS}}", str(fps)))
+    if three_d:
+        tdir = TEMPLATE.parent / "scene3d"
+        (d / "src").mkdir(exist_ok=True)
+        (d / "index.html").write_text(fill((tdir / "index.html").read_text(encoding="utf-8")), encoding="utf-8")
+        kit_rel = Path(os.path.relpath(HERE / "kit" / "three-kit.js", d / "src")).as_posix()   # the kit, from wherever the project is
+        js = fill((tdir / "src" / "main.js").read_text(encoding="utf-8")).replace("../../../kit/three-kit.js", kit_rel)
+        (d / "src" / "main.js").write_text(js, encoding="utf-8")
+    else:
+        (d / "index.html").write_text(fill(TEMPLATE.read_text(encoding="utf-8")), encoding="utf-8")
     sync_assets(d)
     print(d)
     return d
@@ -256,6 +265,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("new"); p.add_argument("name"); p.add_argument("--seconds", type=float, default=8); p.add_argument("--fps", type=int, default=30)
     p.add_argument("--size", default="1920x1080"); p.add_argument("--title", default="")
+    p.add_argument("--3d", dest="three_d", action="store_true", help="a cinematic Three.js project on the three-kit (bundle it before rendering)")
     p = sub.add_parser("frames"); p.add_argument("project"); p.add_argument("--times", default="0.5,2,4,6,8"); p.add_argument("--out")
     p = sub.add_parser("check"); p.add_argument("project")
     p = sub.add_parser("render"); p.add_argument("project"); p.add_argument("--engine", default="auto", choices=["auto", "hyperframes", "studio"])
@@ -269,7 +279,7 @@ def main():
     if a.cmd == "bundle":
         bundle(a.project, a.entry, a.out)
     elif a.cmd == "new":
-        new(a.name, a.seconds, a.fps, a.size, a.title)
+        new(a.name, a.seconds, a.fps, a.size, a.title, a.three_d)
     elif a.cmd == "frames":
         frames(a.project, [float(v) for v in a.times.split(",")], Path(a.out) if a.out else None)
     elif a.cmd == "check":

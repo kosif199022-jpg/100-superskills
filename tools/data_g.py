@@ -19,7 +19,7 @@ dict(n="110", slug="hyperframes-animation-studio", ar="استوديو الأني
      "اختر أصغر تنفيذ قادر: CSS/WAAPI للحالات البسيطة، GSAP للخطوط المنسّقة، SVG للرسوم والمسارات، Three.js لتكوين فضائي حقيقي بإضاءة وكاميرا "
      "(الواقعية السينمائية: Sky model، ماء عاكس، سحب حجمية raymarch، تضاريس PBR بظلال، DOF وbloom وحبيبات وتدرّج لوني؛ تُحزَّم بـ motion.py bundle عبر esbuild "
      "وتُصيَّر على GPU الجهاز: --use-angle=d3d11 في Edge الخفي = 30× أسرع من SwiftShader). المثال: examples/water_cycle_3d.",
-     "python scripts/motion.py new NAME --seconds N --fps 30 --size 1920x1080 --title «…» يُنشئ projects/NAME/index.html من القالب مع "
+     "python scripts/motion.py new NAME --seconds N --fps 30 --size 1920x1080 --title «…» (و--3d لفيلم سينمائي ثلاثي الأبعاد على عدّة scripts/kit/three-kit.js: سماء وشمس وتضاريس وغابة وبحر وسحب وجسيمات وطبقة ما بعد المعالجة وكاميرا وضبابية حركة، ثم motion.py bundle) يُنشئ projects/NAME/index.html من القالب مع "
      "assets/motion-kit.js وassets/gsap.min.js (بعد npm install hyperframes gsap في scripts/).",
      "اكتب التركيب: كل حركة على خط GSAP واحد مُوقَف (paused) بالثواني (المعامل الثالث موضع مطلق)؛ سجّل window.__timelines['root'] = tl حرفياً؛ "
      "MOTION.shim('root', N) ليعمل الملف أيضاً بمصيّر الاستوديو. الأدوات: revealWords/hideWords (أقنعة كلمات صالحة للعربية)، drawPath (مع رأس سهم "

@@ -595,10 +595,36 @@ class Motion(unittest.TestCase):
         self.assertIn("assets/main.bundle.js", html)
         self.assertIn("window.__three.build", html)
         src = (HERE / "motion" / "projects" / "water_cycle_3d" / "src" / "main.js").read_text(encoding="utf-8")
+        kit = (HERE / "motion" / "kit" / "three-kit.js").read_text(encoding="utf-8")
+        self.assertIn("three-kit.js", src)
         for part in ("new Sky()", "new Water(", "UnrealBloomPass", "BokehPass", "composer.render(0)"):
-            self.assertIn(part, src)
-        self.assertNotIn("Math.random", src)
-        self.assertNotIn("new THREE.Clock", src)
+            self.assertIn(part, kit)
+        for text in (src, kit):
+            self.assertNotIn("Math.random", text)
+            self.assertNotIn("new THREE.Clock", text)
+
+    def test_3d_template_scaffolds_and_bundles_on_the_three_kit(self):
+        sys.path.insert(0, str(HERE / "motion"))
+        import motion
+        if not (HERE / "motion" / "node_modules" / "esbuild").exists():
+            self.skipTest("esbuild not installed in motion/")
+        tmp = Path(tempfile.mkdtemp(dir=str(HERE / "motion" / "projects")))     # inside projects/ so ../../../kit resolves
+        old = motion.PROJECTS
+        try:
+            motion.PROJECTS = tmp
+            d = motion.new("t3d", 5, 30, "1280x720", "اختبار", three_d=True)
+            src = (d / "src" / "main.js").read_text(encoding="utf-8")
+            self.assertIn("three-kit.js", src)
+            self.assertIn("const SECONDS = 5", src)
+            out = motion.bundle(str(d))
+            self.assertGreater(out.stat().st_size, 300_000)                   # three.js + addons are inside
+            kit = (HERE / "motion" / "kit" / "three-kit.js").read_text(encoding="utf-8")
+            for name in ("makeSky", "makeTerrain", "makeForest", "makeSea", "makeCloudSlab", "makePost", "makeFrameLoop", "cameraKeys", "makeRibbon"):
+                self.assertIn(f"export function {name}", kit)
+            self.assertNotIn("Math.random", kit)
+        finally:
+            motion.PROJECTS = old
+            shutil.rmtree(tmp, ignore_errors=True)
 
     def test_water_cycle_composition_passes_the_static_rules(self):
         html = (HERE / "motion" / "projects" / "water_cycle" / "index.html").read_text(encoding="utf-8")

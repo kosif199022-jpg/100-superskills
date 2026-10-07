@@ -696,7 +696,7 @@
 1. الإخراج قبل المؤثر (منهج KOSIF Motion Director في references/motion-director.md): حدّد الجمهور والشعور والمخرج والمدة، ثم 2–3 اتجاهات بصرية مختلفة حقاً لكل منها استعارة من الموضوع وتكوين وسلوك مميز ومقايضة؛ اختر واحداً واكتب: الأطروحة (جملة)، الموتيف المتكرر، التكوين، المادة (خطوط، لون، ضوء، سقف عمق)، الحركة (إيقاع، تمهيد، أين يسكن).
 2. المدة والصيغة: ثوانٍ وfps وأبعاد؛ ثم قائمة مشاهد 4–7 بجمل فعلية بأزمنتها، وجسم حامل واحد، و2–3 حركات كاميرا مسمّاة، ثم «نوتة الحركة»: لكل إيقاع الموضوع/الغرض، حالة البداية، حالة النهاية، المدة/التأخير، التمهيد، المحفّز، البديل، سلوك المقاطعة.
 3. اختر أصغر تنفيذ قادر: CSS/WAAPI للحالات البسيطة، GSAP للخطوط المنسّقة، SVG للرسوم والمسارات، Three.js لتكوين فضائي حقيقي بإضاءة وكاميرا (الواقعية السينمائية: Sky model، ماء عاكس، سحب حجمية raymarch، تضاريس PBR بظلال، DOF وbloom وحبيبات وتدرّج لوني؛ تُحزَّم بـ motion.py bundle عبر esbuild وتُصيَّر على GPU الجهاز: --use-angle=d3d11 في Edge الخفي = 30× أسرع من SwiftShader). المثال: examples/water_cycle_3d.
-4. python scripts/motion.py new NAME --seconds N --fps 30 --size 1920x1080 --title «…» يُنشئ projects/NAME/index.html من القالب مع assets/motion-kit.js وassets/gsap.min.js (بعد npm install hyperframes gsap في scripts/).
+4. python scripts/motion.py new NAME --seconds N --fps 30 --size 1920x1080 --title «…» (و--3d لفيلم سينمائي ثلاثي الأبعاد على عدّة scripts/kit/three-kit.js: سماء وشمس وتضاريس وغابة وبحر وسحب وجسيمات وطبقة ما بعد المعالجة وكاميرا وضبابية حركة، ثم motion.py bundle) يُنشئ projects/NAME/index.html من القالب مع assets/motion-kit.js وassets/gsap.min.js (بعد npm install hyperframes gsap في scripts/).
 5. اكتب التركيب: كل حركة على خط GSAP واحد مُوقَف (paused) بالثواني (المعامل الثالث موضع مطلق)؛ سجّل window.__timelines['root'] = tl حرفياً؛ MOTION.shim('root', N) ليعمل الملف أيضاً بمصيّر الاستوديو. الأدوات: revealWords/hideWords (أقنعة كلمات صالحة للعربية)، drawPath (مع رأس سهم يهبط عند الوصول) وflowDash، rain/vapour/sparkle ببذرة، camera (المسرح كتلة واحدة)، flash، grain، vignette. أربع تمهيدات فقط: slam/snap/drive/settle.
 6. ممنوعات يثبتها فاحص HyperFrames: dir=rtl على <html> (فيديو أسود صامت) — direction: rtl على عناصر النص فقط؛ <audio> بلا id صامت؛ أسماء خطوط بلا @font-face؛ Math.random وsetTimeout وrequestAnimationFrame للحالة؛ fromTo بحالة from مرئية لعنصر يجب أن يبقى مخفياً؛ marker-end للأسهم.
 7. الصوت (بديل حين لا تسجيل مرخّصاً): python scripts/ambience.py assets/ambience.wav --seconds N --rain t0:t1 --thunder t --whoosh t1,t2 --chords 0:A,6:F — صوت محيط حتمي (بحر، ريح، وسادة أوتار، مطر، رعد، ووش) مُفتاح إلى الثواني نفسها؛ يُدرج <audio id=… data-start data-duration data-volume>.
@@ -735,6 +735,7 @@
 - `scripts/ambience.py` — Deterministic ambience for a film, synthesised with numpy (no samples, no downloads): sea swell, wind, a soft
 - `scripts/motion.py` — KOSIF Motion — professional animations as HTML compositions (HyperFrames format + GSAP + the motion kit),
 - `templates/composition.html`
+- `templates/scene3d`
 
 ## مراجع مكتوبة
 
