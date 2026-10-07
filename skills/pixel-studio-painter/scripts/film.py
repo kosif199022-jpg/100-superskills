@@ -55,6 +55,10 @@ def drawing_jobs(source: str):
     """Paint jobs for a scene name or a code file, exactly as the studio plays them."""
     import studio
     src = Path(source)
+    if src.suffix.lower() in studio.IMAGE_TYPES and src.exists():         # an image: its own code, drawn exactly
+        work = Path(tempfile.mkdtemp(prefix="kosif_film_img_"))
+        src = work / f"{src.stem}_code.py"
+        src.write_text(studio.image_code(Path(source), Path(source).stem), encoding="utf-8")
     if src.suffix.lower() in (".py", ".svg", ".html", ".htm", ".txt") and src.exists():
         work = Path(tempfile.mkdtemp(prefix="kosif_film_"))
         subprocess.run([sys.executable, str(HERE / "runner.py"), str(src), str(work)], capture_output=True, timeout=900)

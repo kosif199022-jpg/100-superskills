@@ -287,30 +287,14 @@ class Studio:
         style.theme_use("clam")
         style.configure("TButton", padding=(10, 4))
 
-        bar = tk.Frame(self.root, bg="#16141c")
-        bar.pack(fill="x", padx=8, pady=6)
         self.scene = tk.StringVar(value=scene)
         self.speed = tk.StringVar(value=speed)
-        self.scene_box = ttk.Combobox(bar, textvariable=self.scene, values=scenes(), width=18, state="readonly")
-        self.scene_box.pack(side="left")
-        self.scene_box.bind("<<ComboboxSelected>>", lambda e: self.start())
-        ttk.Button(bar, text="▶  ارسم", command=self.redraw).pack(side="left", padx=(8, 2))
-        self.pause_btn = ttk.Button(bar, text="⏸  إيقاف", command=self.toggle_pause)
-        self.pause_btn.pack(side="left", padx=2)
-        tk.Label(bar, text="السرعة", fg="#cfc8dc", bg="#16141c").pack(side="left", padx=(14, 4))
-        ttk.Combobox(bar, textvariable=self.speed, values=list(SPEEDS), width=7, state="readonly").pack(side="left")
-        ttk.Button(bar, text="📝  كود", command=self.open_code).pack(side="left", padx=(14, 2))
-        ttk.Button(bar, text="🖼  صورة", command=self.open_image).pack(side="left", padx=2)
-        ttk.Button(bar, text="📤  كود الصورة", command=self.export_image_code).pack(side="left", padx=2)
-        ttk.Button(bar, text="🧩  تعديل بالذكاء", command=self.copy_edit_package).pack(side="left", padx=2)
         self.image_mode = tk.StringVar(value=EXACT)
-        ttk.Combobox(bar, textvariable=self.image_mode, values=[EXACT, VECTOR], width=16,
-                     state="readonly").pack(side="left", padx=2)
-        ttk.Button(bar, text="⤢  تصدير عالي الدقة", command=self.export_big).pack(side="right", padx=2)
-        ttk.Button(bar, text="💾  حفظ PNG", command=self.save_png).pack(side="right", padx=2)
+        self._build_menu()
+        self._build_bar()
 
         self.cv = tk.Canvas(self.root, width=self.W, height=self.H, bg=PAPER, highlightthickness=0)
-        self.cv.pack(padx=8)
+        self.cv.pack(padx=8, pady=(2, 0))
         self.disp = np.empty((self.H, self.W, 3), np.uint8)
         self.photo = ImageTk.PhotoImage(Image.new("RGB", (self.W, self.H), PAPER))
         self.cv.create_image(0, 0, image=self.photo, anchor="nw")
@@ -319,13 +303,14 @@ class Studio:
 
         self.info = tk.StringVar(value="")
         tk.Label(self.root, textvariable=self.info, fg="#9fe0b5", bg="#16141c", anchor="e",
-                 font=("Segoe UI", 11, "bold")).pack(fill="x", padx=10, pady=(4, 0))
+                 font=("Segoe UI", 11, "bold")).pack(fill="x", padx=10, pady=(2, 0))
         self.status = tk.StringVar(value="")
         tk.Label(self.root, textvariable=self.status, fg="#e9e2f5", bg="#16141c", anchor="e",
-                 font=("Segoe UI", 11)).pack(fill="x", padx=10, pady=(2, 8))
-        self.root.bind("<Control-v>", lambda e: self.paste_any())
-        self.root.bind("<Control-V>", lambda e: self.paste_any())
-        self.root.bind("<Control-o>", lambda e: self.open_image())
+                 font=("Segoe UI", 11)).pack(fill="x", padx=10, pady=(0, 4))
+        for keys, fn in (("<Control-v>", self.paste_any), ("<Control-V>", self.paste_any), ("<Control-o>", self.open_image),
+                         ("<Control-s>", self.save_png), ("<F5>", self.redraw), ("<Control-e>", self.edit_with_ai),
+                         ("<Control-g>", self.picture_from_prompt), ("<Control-z>", self.undo), ("<Control-k>", self.open_code)):
+            self.root.bind(keys, lambda e, fn=fn: fn())
 
         self.q: queue.Queue = queue.Queue(maxsize=6)
         self.stop = threading.Event()
@@ -337,9 +322,91 @@ class Studio:
         self.reference = None                              # what that image must end up identical to
         self.code_win = None
         self.original = None                               # the image file behind the current picture, if any
+        self.history: list[Path] = []                      # pictures before each 🧩 edit, for ↩
+        self.busy = False                                  # something is being drawn right now
+        self.pending_note = ""                             # shown with the next "finished" message
         self.last_info: dict = {}
         if scene:
             self.root.after(300, self.start)
+
+    def _build_menu(self):
+        tk = self.tk
+        m = tk.Menu(self.root)
+        f = tk.Menu(m, tearoff=0)
+        f.add_command(label="فتح صورة…", accelerator="Ctrl+O", command=self.open_image)
+        f.add_command(label="لصق صورة أو كود من الحافظة", accelerator="Ctrl+V", command=self.paste_any)
+        f.add_command(label="فتح ملف كود…", command=lambda: (self.open_code(), self.open_code_file()))
+        f.add_separator()
+        f.add_command(label="حفظ PNG", accelerator="Ctrl+S", command=self.save_png)
+        f.add_command(label="تصدير عالي الدقة (3840×2560)", command=self.export_big)
+        f.add_command(label="كود الصورة (برنامج بايثون مستقل)", command=self.export_image_code)
+        f.add_command(label="فيلم الرسم (MP4)", command=self.make_film)
+        f.add_separator()
+        f.add_command(label="خروج", command=self.root.destroy)
+        m.add_cascade(label="ملف", menu=f)
+        d = tk.Menu(m, tearoff=0)
+        d.add_command(label="ارسم", accelerator="F5", command=self.redraw)
+        d.add_command(label="إيقاف / متابعة", command=self.toggle_pause)
+        sp = tk.Menu(d, tearoff=0)
+        for name in SPEEDS:
+            sp.add_radiobutton(label=name, variable=self.speed, value=name)
+        d.add_cascade(label="السرعة", menu=sp)
+        md = tk.Menu(d, tearoff=0)
+        for name in (EXACT, VECTOR):
+            md.add_radiobutton(label=name, variable=self.image_mode, value=name)
+        d.add_cascade(label="طريقة رسم الصور", menu=md)
+        m.add_cascade(label="رسم", menu=d)
+        ai = tk.Menu(m, tearoff=0)
+        ai.add_command(label="🧩 عدّل الصورة…", accelerator="Ctrl+E", command=self.edit_with_ai)
+        ai.add_command(label="🤖 صورة من وصف…", accelerator="Ctrl+G", command=self.picture_from_prompt)
+        ai.add_command(label="↩ تراجع عن آخر تعديل", accelerator="Ctrl+Z", command=self.undo)
+        ai.add_separator()
+        ai.add_command(label="📝 لوحة الكود", accelerator="Ctrl+K", command=self.open_code)
+        ai.add_command(label="انسخ تعليمات لأي ذكاء اصطناعي", command=self.copy_ai_prompt)
+        ai.add_command(label="⚙ إعداد الذكاء الاصطناعي…", command=self.ai_settings)
+        m.add_cascade(label="ذكاء اصطناعي", menu=ai)
+        h = tk.Menu(m, tearoff=0)
+        h.add_command(label="دليل سريع", accelerator="F1", command=self.show_help)
+        m.add_cascade(label="مساعدة", menu=h)
+        self.root.config(menu=m)
+        self.root.bind("<F1>", lambda e: self.show_help())
+
+    def _build_bar(self):
+        """Two rows of groups: source · drawing, then AI · export — the window stays as wide as the canvas."""
+        tk, ttk = self.tk, self.ttk
+        rows = [tk.Frame(self.root, bg="#16141c") for _ in range(2)]
+        rows[0].pack(fill="x", padx=8, pady=(4, 0))
+        rows[1].pack(fill="x", padx=8, pady=(2, 2))
+
+        def group(row, title):
+            g = tk.Frame(row, bg="#16141c")
+            g.pack(side="left", padx=(0, 10))
+            tk.Label(g, text=title, fg="#7d7592", bg="#16141c", font=("Segoe UI", 8)).pack(side="right", padx=(6, 0))
+            return g
+        g = group(rows[0], "المصدر")
+        self.scene_box = ttk.Combobox(g, textvariable=self.scene, values=scenes(), width=14, state="readonly")
+        self.scene_box.pack(side="left")
+        self.scene_box.bind("<<ComboboxSelected>>", lambda e: self.start())
+        ttk.Button(g, text="🖼  صورة", command=self.open_image).pack(side="left", padx=2)
+        ttk.Button(g, text="📝  كود", command=self.open_code).pack(side="left", padx=2)
+        ttk.Combobox(g, textvariable=self.image_mode, values=[EXACT, VECTOR], width=13, state="readonly").pack(side="left", padx=2)
+        g = group(rows[0], "الرسم")
+        ttk.Button(g, text="▶  ارسم", command=self.redraw).pack(side="left", padx=2)
+        self.pause_btn = ttk.Button(g, text="⏸", width=3, command=self.toggle_pause)
+        self.pause_btn.pack(side="left", padx=2)
+        ttk.Combobox(g, textvariable=self.speed, values=list(SPEEDS), width=6, state="readonly").pack(side="left", padx=2)
+        ttk.Button(rows[0], text="❓", width=3, command=self.show_help).pack(side="right", padx=2)
+        g = group(rows[1], "الذكاء الاصطناعي")
+        ttk.Button(g, text="🧩  عدّل الصورة", command=self.edit_with_ai).pack(side="left", padx=2)
+        ttk.Button(g, text="🤖  صورة من وصف", command=self.picture_from_prompt).pack(side="left", padx=2)
+        self.undo_btn = ttk.Button(g, text="↩  تراجع", command=self.undo, state="disabled")
+        self.undo_btn.pack(side="left", padx=2)
+        ttk.Button(g, text="⚙", width=3, command=self.ai_settings).pack(side="left", padx=2)
+        g = group(rows[1], "التصدير")
+        ttk.Button(g, text="💾  PNG", command=self.save_png).pack(side="left", padx=2)
+        ttk.Button(g, text="⤢  دقة عالية", command=self.export_big).pack(side="left", padx=2)
+        ttk.Button(g, text="📤  كود الصورة", command=self.export_image_code).pack(side="left", padx=2)
+        ttk.Button(g, text="🎬  فيلم", command=self.make_film).pack(side="left", padx=2)
 
     # ── drawing ──────────────────────────────────────────────────────────────────────────────────────────────
     def redraw(self):
@@ -363,6 +430,7 @@ class Studio:
         self.t_start = time.perf_counter()
         self.last_info = {}
         self.native, self.reference = None, None
+        self.busy = True
         self.info.set("")
         if canvas:
             self.set_native(*canvas)
@@ -525,12 +593,14 @@ class Studio:
         self.cv.coords(self.brush, -20, -20, -10, -10)
         self.cv.coords(self.brush_in, -20, -20, -10, -10)
         self.photo.paste(Image.fromarray(self.disp))
+        self.busy = False
         if getattr(self, "error_shown", False):
             self.error_shown = False
             return
         secs = time.perf_counter() - self.t_start
         steps = self.steps_total or (self.job.i + 1 if self.job else 0)
-        msg = (f"{self.title}   ·   اكتملت الرسمة: {self.drawn:,} بيكسل في {secs:.1f} ثانية"
+        note, self.pending_note = self.pending_note, ""
+        msg = ((note + "   ·   ") if note else "") + (f"{self.title}   ·   اكتملت الرسمة: {self.drawn:,} بيكسل في {secs:.1f} ثانية"
                + (f"   ·   {steps} خطوة" if steps else ""))
         OUT.mkdir(exist_ok=True)
         if self.native is None:
@@ -554,6 +624,8 @@ class Studio:
 
     def show_error(self, msg: str):
         self.error_shown = True
+        self.busy = False
+        self.pending_note = ""
         last = [ln for ln in msg.strip().splitlines() if ln.strip()][-1:] or [msg]
         self.status.set(f"⚠ الكود فيه خطأ: {last[0][:150]}")
         if self.code_win is not None and self.code_win.winfo_exists():
@@ -583,7 +655,7 @@ class Studio:
             ttk.Button(row, text="💾  حفظ كمشهد", command=self.save_code_as_scene).pack(side="right", padx=2)
             ttk.Button(row, text="🧹  مسح", command=lambda: self.code_text.delete("1.0", "end")).pack(side="right", padx=2)
             ttk.Button(row, text="🤖  انسخ تعليمات للذكاء الاصطناعي", command=self.copy_ai_prompt).pack(side="left", padx=2)
-            ttk.Button(row, text="🧩  حزمة التعديل", command=self.copy_edit_package).pack(side="left", padx=2)
+            ttk.Button(row, text="🧩  عدّل الصورة", command=self.edit_with_ai).pack(side="left", padx=2)
             ex = sorted(p.name for p in (HERE / "examples").glob("*") if p.suffix in (".py", ".svg"))
             if ex:
                 self.example = tk.StringVar(value="أمثلة…")
@@ -674,76 +746,253 @@ class Studio:
             self.status.set("🧩 أُعيدت الصورة الأصلية إلى برنامج التعديل.")
         return code
 
-    def copy_edit_package(self):
-        """🧩: instructions + what the picture contains + a small edit program, copied as one text for any AI;
-        the program is also opened in the panel. The AI returns the program with edits; ▶ draws the result."""
-        from tkinter import filedialog, simpledialog
-        import edit_pack
-        src = None
+    def current_picture(self) -> Path | None:
+        """The picture on the canvas as a file at its own resolution: the opened image, the result of a code run
+        (the native canvas, pixel for pixel), or a drawn scene. None while drawing or when nothing is drawn."""
+        if self.busy:
+            return None
         if self.source[0] == "image" and self.original and Path(self.original).exists():
-            src = Path(self.original)
-        elif self.reference is not None:                   # a code run (e.g. the previous edit): its final picture
-            SOURCES.mkdir(exist_ok=True)
+            return Path(self.original)
+        SOURCES.mkdir(exist_ok=True)
+        if self.native is not None:
+            nv = self.native
             src = SOURCES / time.strftime("edit_%Y%m%d_%H%M%S.png")
-            Image.fromarray(np.ascontiguousarray(self.reference)).convert("RGB").save(src)
-        elif self.drawn > 0:                               # a scene: the picture as drawn
-            SOURCES.mkdir(exist_ok=True)
+            Image.fromarray(nv["canvas"].reshape(nv["h"], nv["w"], 4), "RGBA").convert("RGB").save(src)
+            return src
+        if self.drawn > 0:                                 # a scene is drawn at the window's size, which is its size
             src = SOURCES / f"{self.out_name()}_canvas.png"
             Image.fromarray(self.disp, "RGB").save(src)
+            return src
+        return None
+
+    def _manual_ai(self, text: str, program: str | None, title: str, steps: str):
+        """No AI is connected: the text goes to the clipboard, the panel opens, and the steps are shown."""
+        from tkinter import messagebox
+        self.root.clipboard_clear()
+        self.root.clipboard_append(text)
+        self.root.update()
+        self.open_code(program)
+        self.status.set(f"نُسخ النص ({len(text):,} حرفاً). الصقه في Claude أو أي ذكاء اصطناعي، ثم الصق ردّه في اللوحة واضغط «ارسم الكود».")
+        messagebox.showinfo(title, steps + "\n\nليتم ذلك تلقائياً: افتح طرفية واكتب  claude  ثم  /login  مرة واحدة "
+                            "(أو ضع مفتاح API في ⚙)، ثم أعد فتح الاستوديو.", parent=self.root)
+
+    def edit_with_ai(self):
+        """🧩: say what should change. The studio describes the picture and writes the edit program; colour changes
+        are done locally at once, anything else is asked of Claude (CLI or API); without either, the package is
+        copied for the user to paste into any AI. The result is drawn: the original first, then the edit."""
+        from tkinter import filedialog, simpledialog
+        import ai_bridge
+        import edit_pack
+        if self.busy:
+            self.status.set("انتظر حتى تكتمل الرسمة الحالية.")
+            return
+        src = self.current_picture()
         if src is None:
             p = filedialog.askopenfilename(title="اختر الصورة التي تريد تعديلها",
                                            filetypes=[("صور", " ".join("*" + e for e in IMAGE_TYPES)), ("الكل", "*.*")])
             if not p:
                 return
             src = Path(p)
-        parent = self.code_win if self.code_win and self.code_win.winfo_exists() else self.root
-        req = simpledialog.askstring("ما التعديل؟", "اكتب التعديل الذي تريده من الذكاء الاصطناعي (يمكنك تركه فارغاً):",
-                                     parent=parent) or ""
+        req = simpledialog.askstring("🧩 عدّل الصورة", "ما التعديل الذي تريده؟\nمثلاً: غيّر لون القميص إلى الأحمر، أو: اجعل الخلفية أفتح",
+                                     parent=self.root)
+        if not req or not req.strip():
+            return
+        req = req.strip()
         name = re.sub(r"[^\w-]+", "_", Path(src).stem) or "image"
-        self.status.set("🧩 يحضّر حزمة التعديل: يصف الصورة ويكتب برنامج التعديل...")
+        self.status.set("🧩 يصف الصورة ويحضّر برنامج التعديل...")
 
         def work():
             try:
-                pack = edit_pack.package(src, name, req)
                 program, _ = edit_pack.edit_program(src, name)
+                local = edit_pack.local_edit(src, req)
+                if local:
+                    code, how = edit_pack.with_edits(program, local[0]), f"محلياً ({local[1]})"
+                elif ai_bridge.backend():
+                    self.root.after(0, lambda: self.status.set("🧩 يسأل Claude عن التعديل... (قد يستغرق نحو دقيقة)"))
+                    reply = ai_bridge.ask(edit_pack.package(src, name, req))
+                    code = extract_code(reply)
+                    if "IMAGE_B64" not in code or "# EDITS START" not in code:
+                        raise RuntimeError("ردّ الذكاء الاصطناعي لم يحتوِ برنامج التعديل")
+                    how = "بواسطة Claude"
+                else:
+                    pack = edit_pack.package(src, name, req)
+                    self.root.after(0, lambda: self._manual_ai(
+                        pack, program, "🧩 التعديل بالذكاء الاصطناعي",
+                        "لا يوجد ذكاء اصطناعي متصل بالاستوديو، فالخطوات يدوية:\n"
+                        "1) نُسخت حزمة التعديل إلى الحافظة.\n2) الصقها في Claude (أو أي ذكاء اصطناعي).\n"
+                        "3) انسخ ردّه كله.\n4) اضغط «📋 لصق» في لوحة الكود ثم «▶ ارسم الكود»."))
+                    return
             except Exception as e:
-                self.root.after(0, lambda: self.status.set(f"تعذّر تحضير الحزمة: {e}"))
+                self.root.after(0, lambda e=e: self.status.set(f"تعذّر التعديل: {e}"))
                 return
 
-            def done():
-                self.root.clipboard_clear()
-                self.root.clipboard_append(pack)
-                self.root.update()
-                self.open_code(program)
-                self.status.set(f"🧩 نُسخت حزمة التعديل ({len(pack):,} حرفاً). الصقها في Claude أو أي ذكاء اصطناعي، "
-                                "خذ البرنامج الذي يعيده، الصقه هنا، واضغط «ارسم الكود».")
-            self.root.after(0, done)
+            def go():
+                self.history.append(Path(src))
+                self.undo_btn.configure(state="normal")
+                self.run_code_text(code, f"🧩 {req[:40]} — {how}")
+            self.root.after(0, go)
         threading.Thread(target=work, daemon=True).start()
 
-    def run_code(self):
+    def picture_from_prompt(self):
+        """🤖: describe a picture; Claude writes its code (SVG / PIL / scene) and the studio draws it."""
+        from tkinter import simpledialog
+        import ai_bridge
+        if self.busy:
+            self.status.set("انتظر حتى تكتمل الرسمة الحالية.")
+            return
+        desc = simpledialog.askstring("🤖 صورة من وصف", "صف الصورة التي تريدها (بالعربية أو الإنجليزية):", parent=self.root)
+        if not desc or not desc.strip():
+            return
+        prompt = AI_PROMPT.replace("[اكتب وصف الصورة هنا]", desc.strip())
+        if not ai_bridge.backend():
+            self._manual_ai(prompt, None, "🤖 صورة من وصف",
+                            "لا يوجد ذكاء اصطناعي متصل بالاستوديو، فالخطوات يدوية:\n1) نُسخ الطلب إلى الحافظة.\n"
+                            "2) الصقه في Claude (أو أي ذكاء اصطناعي).\n3) انسخ ردّه كله.\n4) «📋 لصق» ثم «▶ ارسم الكود».")
+            return
+        self.status.set("🤖 يطلب من Claude كود الصورة... (قد يستغرق نحو دقيقة)")
+
+        def work():
+            try:
+                code = extract_code(ai_bridge.ask(prompt))
+            except Exception as e:
+                self.root.after(0, lambda e=e: self.status.set(f"تعذّر طلب الصورة: {e}"))
+                return
+            self.root.after(0, lambda: self.run_code_text(code, f"🤖 {desc.strip()[:40]} — بواسطة Claude"))
+        threading.Thread(target=work, daemon=True).start()
+
+    def undo(self):
+        """↩: back to the picture before the last 🧩 edit."""
+        if self.busy or not self.history:
+            return
+        src = self.history.pop()
+        self.undo_btn.configure(state="normal" if self.history else "disabled")
+        self.open_image(path=str(src))
+
+    def make_film(self):
+        """🎬: the current picture forming pixel by pixel, as an MP4 in out/."""
+        if self.busy:
+            self.status.set("انتظر حتى تكتمل الرسمة الحالية.")
+            return
+        import film
+        src = self.scene.get() if self.source[0] == "scene" else str(self.source[1])
+        if not src:
+            return
+        out = OUT / f"{self.out_name()}_drawing.mp4"
+        OUT.mkdir(exist_ok=True)
+        speed = {"بطيء": "slow", "عادي": "normal", "سريع": "fast", "فوري": "fast"}.get(self.speed.get(), "normal")
+        self.status.set("🎬 يصنع فيلم الرسم بـ ffmpeg... قد يستغرق دقيقة أو أكثر")
+
+        def work():
+            try:
+                info = film.film_drawing(src, out, fps=30, speed=speed)
+            except Exception as e:
+                self.root.after(0, lambda e=e: self.status.set(f"تعذّر صنع الفيلم: {e}"))
+                return
+            self.root.after(0, lambda: self.status.set(f"🎬 الفيلم جاهز: out/{out.name} ({info['seconds']} ث، {info['frames']} إطار)"))
+        threading.Thread(target=work, daemon=True).start()
+
+    def ai_settings(self):
+        """⚙: which AI the studio can reach, and how to connect one."""
+        import ai_bridge
+        tk, ttk = self.tk, self.ttk
+        w = tk.Toplevel(self.root)
+        w.title("⚙ الذكاء الاصطناعي")
+        w.configure(bg="#16141c")
+        w.transient(self.root)
+        body = tk.Frame(w, bg="#16141c", padx=14, pady=10)
+        body.pack(fill="both", expand=True)
+        state = tk.StringVar(value="يفحص...")
+        tk.Label(body, textvariable=state, fg="#9fe0b5", bg="#16141c", justify="right", anchor="e", wraplength=620,
+                 font=("Segoe UI", 11, "bold")).pack(fill="x", pady=(0, 6))
+        tk.Label(body, text="ليعمل 🧩 و🤖 تلقائياً يحتاج الاستوديو ذكاءً اصطناعياً متصلاً:\n"
+                            "• Claude Code: افتح طرفية واكتب  claude  ثم  /login  مرة واحدة (لا يحتاج مفتاحاً).\n"
+                            "• أو مفتاح Anthropic API أدناه.\n"
+                            "بدونهما: تغييرات الألوان تتم محلياً، وبقية الطلبات تُنسخ لتلصقها في أي ذكاء اصطناعي.",
+                 fg="#e9e2f5", bg="#16141c", justify="right", anchor="e", wraplength=620, font=("Segoe UI", 10)).pack(fill="x")
+        st = ai_bridge.load_settings()
+        row = tk.Frame(body, bg="#16141c")
+        row.pack(fill="x", pady=(10, 2))
+        key = tk.StringVar(value=st.get("anthropic_api_key", ""))
+        ttk.Entry(row, textvariable=key, show="•", width=52).pack(side="left")
+        tk.Label(row, text="مفتاح Anthropic API (اختياري)", fg="#cfc8dc", bg="#16141c").pack(side="right", padx=6)
+        row = tk.Frame(body, bg="#16141c")
+        row.pack(fill="x", pady=2)
+        model = tk.StringVar(value=st.get("model", ""))
+        ttk.Entry(row, textvariable=model, width=28).pack(side="left")
+        tk.Label(row, text="النموذج (للمفتاح)", fg="#cfc8dc", bg="#16141c").pack(side="right", padx=6)
+        row = tk.Frame(body, bg="#16141c")
+        row.pack(fill="x", pady=(10, 0))
+
+        def refresh():
+            ai_bridge._cache.clear()
+
+            def work():
+                info = ai_bridge.status()
+                now = {"cli": "متصل عبر Claude Code ✅", "api": "متصل عبر مفتاح API ✅"}.get(info["backend"],
+                       "غير متصل — الألوان محلياً، والباقي بالنسخ واللصق")
+                self.root.after(0, lambda: state.set(f"الحالة: {now}\n{info['cli_msg']}"))
+            threading.Thread(target=work, daemon=True).start()
+
+        def save():
+            ai_bridge.save_settings({"anthropic_api_key": key.get().strip(), "model": model.get().strip() or ai_bridge.DEFAULTS["model"]})
+            refresh()
+        ttk.Button(row, text="حفظ", command=save).pack(side="right", padx=2)
+        ttk.Button(row, text="إعادة الفحص", command=refresh).pack(side="right", padx=2)
+        ttk.Button(row, text="إغلاق", command=w.destroy).pack(side="left", padx=2)
+        refresh()
+
+    def show_help(self):
         from tkinter import messagebox
+        messagebox.showinfo("دليل سريع", (
+            "المصدر: اختر مشهداً من القائمة، أو 🖼 صورة (تُرسم من الصفر وتنتهي مطابقة للأصل)، أو 📝 كود من أي ذكاء اصطناعي.\n\n"
+            "الرسم: ▶ يعيد الرسم، ⏸ يوقف، والسرعة من القائمة.\n\n"
+            "🧩 عدّل الصورة: اكتب ما تريد تغييره («غيّر الذهبي إلى الأزرق»، «اجعل القميص أحمر»)؛ الألوان تتغيّر فوراً، "
+            "وبقية الطلبات يكتبها Claude ويرسمها الاستوديو. ↩ يرجع خطوة.\n\n"
+            "🤖 صورة من وصف: صف الصورة ويكتب Claude كودها ويرسمها.\n\n"
+            "التصدير: 💾 PNG، ⤢ دقة عالية، 📤 كود الصورة (برنامج بايثون يعيد رسمها بأي مكان)، 🎬 فيلم الرسم.\n\n"
+            "اختصارات: Ctrl+O صورة · Ctrl+V لصق · F5 ارسم · Ctrl+E تعديل · Ctrl+G من وصف · Ctrl+Z تراجع · Ctrl+K الكود · Ctrl+S حفظ"),
+            parent=self.root)
+
+    def run_code_text(self, code: str, note: str = ""):
+        """Run code as if it were pasted and ▶ pressed (the panel, if open, shows it)."""
+        code = self._clean_code(code)
+        if not code:
+            return
+        if self.code_win is not None and self.code_win.winfo_exists():
+            self.load_code_text(code)
+        if self._launch_code(code):
+            self.pending_note = note
+
+    def run_code(self):
         code = self._clean_code(self.code_text.get("1.0", "end"))
         if code is None:
             return
         if not code:
             self.status.set("الصق كوداً أولاً.")
             return
+        if self._launch_code(code):
+            self.err_box.configure(state="normal")
+            self.err_box.delete("1.0", "end")
+            self.err_box.configure(state="disabled")
+
+    def _launch_code(self, code: str) -> bool:
+        """The risk check, then the code is written to code/last.* and drawn. False when the user declined."""
+        from tkinter import messagebox
         why = risky(code)
+        parent = self.code_win if self.code_win is not None and self.code_win.winfo_exists() else self.root
         if why and not messagebox.askyesno("تنبيه قبل التشغيل",
                                            "هذا الكود يحتوي أوامر تتجاوز الرسم:\n• " + "\n• ".join(why) +
                                            "\n\nسيعمل على جهازك بصلاحياتك. هل تثق بمصدره وتريد تشغيله؟",
-                                           icon="warning", default="no", parent=self.code_win):
-            return
+                                           icon="warning", default="no", parent=parent):
+            return False
         CODE.mkdir(exist_ok=True)
         low = code.lstrip()[:4000].lower()
         ext = ".html" if low.startswith("<") and ("<!doctype html" in low or "<html" in low or "<script" in low) else \
             ".svg" if low.startswith("<") else ".py"
         f = CODE / f"last{ext}"
         f.write_text(code, encoding="utf-8")
-        self.err_box.configure(state="normal")
-        self.err_box.delete("1.0", "end")
-        self.err_box.configure(state="disabled")
         self.start_code(f)
+        return True
 
     def save_code_as_scene(self):
         from tkinter import simpledialog
@@ -930,6 +1179,9 @@ class Studio:
         threading.Thread(target=work, daemon=True).start()
 
     def run(self):
+        self.root.update_idletasks()                        # the window is as tall as the screen allows: open it at the top
+        x = max(0, (self.root.winfo_screenwidth() - self.root.winfo_reqwidth()) // 2)
+        self.root.geometry(f"+{x}+0")
         self.root.mainloop()
 
 

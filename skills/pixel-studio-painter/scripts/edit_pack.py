@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import re
 from pathlib import Path
 
 from PIL import Image
@@ -164,27 +165,161 @@ region = (x0, y0, x1, y1) بالبيكسل. الإحداثيات تبدأ من �
 '''
 
 
-def describe(path: str | Path, max_layers: int = 14) -> str:
-    """What the picture contains, in words an AI can act on: size, then the colour layers with their colour, share,
-    bounding box and centre (from the studio's own vectoriser)."""
+def layers(path: str | Path, max_layers: int = 14) -> dict:
+    """What the picture contains, as data: size, photo?, and the colour layers (name, colour, share, box, centre)
+    from the studio's own vectoriser, in the picture's own pixel coordinates."""
     import vectorize as V
     with Image.open(path) as im:
         w, h = im.size
     data = V.trace(path, max_side=300)
     tw, th = data["size"]
     sx, sy = w / tw, h / th
-    lines = [f"الصورة: {Path(path).name}، {w}×{h} بيكسل، {'صورة فوتوغرافية' if data['photo'] else 'رسم أو شعار'}.",
-             "الطبقات اللونية (الاسم، اللون، النسبة، المربع المحيط x0,y0,x1,y1، المركز):"]
     total = max(1.0, sum(L["area"] for L in data["layers"]))
+    out = []
     for L in data["layers"][:max_layers]:
         xs = [p[0] for q in L["polys"] for p in q["pts"]]
         ys = [p[1] for q in L["polys"] for p in q["pts"]]
         if not xs:
             continue
-        box = (int(min(xs) * sx), int(min(ys) * sy), int(max(xs) * sx), int(max(ys) * sy))
-        cx, cy = int(L["centre"][0] * sx), int(L["centre"][1] * sy)
-        lines.append(f"- {L['name']}: {L['color']}، {L['area'] / total:.0%}، المربع {box}، المركز ({cx}, {cy})")
+        parts = []
+        for q in L["polys"]:
+            px = [p[0] for p in q["pts"]]
+            py = [p[1] for p in q["pts"]]
+            if len(px) >= 3:
+                bw, bh = (max(px) - min(px)) * sx, (max(py) - min(py)) * sy
+                parts.append({"box": (int(min(px) * sx), int(min(py) * sy), int(max(px) * sx) + 1, int(max(py) * sy) + 1),
+                              "area": float(abs(_poly_area(q["pts"])) * sx * sy), "span": bw * bh})
+        parts.sort(key=lambda p: -p["area"])
+        layer_area = max(1.0, sum(p["area"] for p in parts))
+        for p in parts:
+            p["share"] = p["area"] / layer_area
+        out.append({"name": L["name"], "color": L["color"], "share": L["area"] / total,
+                    "box": (int(min(xs) * sx), int(min(ys) * sy), int(max(xs) * sx), int(max(ys) * sy)),
+                    "centre": (int(L["centre"][0] * sx), int(L["centre"][1] * sy)), "parts": parts[:8]})
+    return {"name": Path(path).name, "size": (w, h), "photo": bool(data["photo"]), "layers": out}
+
+
+def _poly_area(pts) -> float:
+    a = 0.0
+    for i in range(len(pts)):
+        x0, y0 = pts[i]
+        x1, y1 = pts[(i + 1) % len(pts)]
+        a += x0 * y1 - x1 * y0
+    return a / 2
+
+
+def describe(path: str | Path, max_layers: int = 14) -> str:
+    """The same, in words an AI can act on."""
+    d = layers(path, max_layers)
+    w, h = d["size"]
+    lines = [f"الصورة: {d['name']}، {w}×{h} بيكسل، {'صورة فوتوغرافية' if d['photo'] else 'رسم أو شعار'}.",
+             "الطبقات اللونية (الاسم، اللون، النسبة، المربع المحيط x0,y0,x1,y1، المركز):"]
+    for L in d["layers"]:
+        big = [p["box"] for p in L["parts"] if p["share"] >= 0.08][:3]
+        lines.append(f"- {L['name']}: {L['color']}، {L['share']:.0%}، المربع {L['box']}، المركز {L['centre']}"
+                     + (f"، أجزاؤها الكبرى {big}" if big else ""))
+    lines.append("نصيحة: لتغيير شيء واحد استعمل مربع جزئه الكبير لا مربع الطبقة كلها، فالطبقة قد تضم بقعاً صغيرة بنفس اللون.")
     return "\n".join(lines)
+
+
+# ── colour-to-colour requests understood without any AI ("غيّر الذهبي إلى الأزرق", "make the grey red") ──
+COLOURS = {
+    "#d62828": ("أحمر", "احمر", "حمراء", "red"), "#2f6fd6": ("أزرق", "ازرق", "زرقاء", "blue"), "#2e9e5b": ("أخضر", "اخضر", "خضراء", "green"),
+    "#f2c94c": ("أصفر", "اصفر", "صفراء", "yellow"), "#d4a53a": ("ذهبي", "gold", "golden"), "#f08a24": ("برتقالي", "orange"),
+    "#7a4b2a": ("بني", "بنية", "brown"), "#f06aa8": ("وردي", "زهري", "pink"), "#7a4fd1": ("بنفسجي", "موف", "purple", "violet"),
+    "#8a8a8a": ("رمادي", "رصاصي", "grey", "gray"), "#111111": ("أسود", "اسود", "سوداء", "black"), "#f5f5f5": ("أبيض", "ابيض", "بيضاء", "white"),
+    "#2fb8d6": ("سماوي", "تركواز", "فيروزي", "cyan", "turquoise", "teal"), "#c0c0c0": ("فضي", "silver"),
+    "#e8d9b5": ("بيج", "كريمي", "beige", "cream"), "#7f8c2a": ("زيتي", "olive"), "#1f2d6b": ("كحلي", "navy"),
+    "#7b1e2b": ("عنابي", "نبيتي", "maroon", "burgundy"),
+}
+_WORD_TO_HEX = {w: hx for hx, words in COLOURS.items() for w in words}
+_AR_VERBS = r"(?:غي[رّ]ر?|بد[لّ]ل?|حو[لّ]ل?|اجعل|خل[يّ]|صي[رّ]ر?|لو[نّ]ن?)"
+_PATTERNS = [
+    re.compile(_AR_VERBS + r"\s*(?:ال)?لون\s*(?:ال)?(\S+?)\s*(?:إلى|الى|الي|ل)\s*(?:اللون\s*)?(?:ال)?(\S+)"),
+    re.compile(_AR_VERBS + r"\s*(?:ال)?(\S+?)\s*(?:إلى|الى|الي)\s*(?:اللون\s*)?(?:ال)?(\S+)"),
+    re.compile(r"(?:change|make|turn|recolou?r|replace)\s+(?:the\s+)?(?:colou?r\s+)?(\w+)\s+(?:to|into|with)\s+(?:the\s+)?(\w+)", re.I),
+]
+
+
+def _word_hex(word: str) -> str | None:
+    """The colour a word names, tolerant of 'ال', tanween, feminine/adjective endings and case."""
+    w = re.sub(r"[ً-ْـ]", "", word.strip("،,.!؟?;: ").lower())
+    forms = [w]
+    if w.startswith("ال"):
+        forms.append(w[2:])
+    for base in list(forms):
+        for i in (1, 2, 3):
+            if len(base) > i + 2 and base[-i:] in ("ا", "ة", "ي", "ه", "ية", "ياً", "يا", "ات", "ين", "ish"):
+                forms.append(base[:-i])
+    for form in forms:
+        if form in _WORD_TO_HEX:
+            return _WORD_TO_HEX[form]
+    return None
+
+
+def parse_colour_request(request: str) -> tuple[str, str] | None:
+    """(source hex, target hex) when the request says 'change colour A to colour B' in Arabic or English: by the
+    verb patterns first, otherwise the first and last colour words mentioned ('the grey shirt ... red')."""
+    for pat in _PATTERNS:
+        m = pat.search(request)
+        if m:
+            a, b = _word_hex(m.group(1)), _word_hex(m.group(2))
+            if a and b:
+                return a, b
+    found = [hx for hx in (_word_hex(w) for w in re.findall(r"[\w؀-ۿ]+", request)) if hx]
+    if len(found) >= 2 and found[0] != found[-1]:
+        return found[0], found[-1]
+    return None
+
+
+def _hsv_dist(h1, h2) -> float:
+    import colorsys
+    def hsv(hx):
+        r, g, b = (int(hx[i:i + 2], 16) / 255 for i in (1, 3, 5))
+        return colorsys.rgb_to_hsv(r, g, b)
+    (ha, sa, va), (hb, sb, vb) = hsv(h1), hsv(h2)
+    dh = min(abs(ha - hb), 1 - abs(ha - hb)) * (sa + sb)        # hue matters only for saturated colours
+    return 2.2 * dh + 0.9 * abs(sa - sb) + 0.6 * abs(va - vb)
+
+
+def local_edit(path: str | Path, request: str) -> tuple[str, str] | None:
+    """Edit lines for a colour-to-colour request, found without an AI: the picture's layer nearest to the named
+    colour is recoloured to the target (shading kept). (edit lines, note) or None when the request needs an AI."""
+    pair = parse_colour_request(request)
+    if not pair:
+        return None
+    src_hex, dst_hex = pair
+    d = layers(path)
+    cands = [L for L in d["layers"] if L["share"] >= 0.005]
+    if not cands:
+        return None
+    L = min(cands, key=lambda L: _hsv_dist(L["color"], src_hex))
+    if _hsv_dist(L["color"], src_hex) > 0.6:
+        return None
+    w, h = d["size"]
+    pad = max(3, int(0.01 * max(w, h)))
+    boxes, covered = [], 0.0
+    for p in L["parts"]:                                   # the big pieces (a headline, a badge), not the specks
+        if covered >= 0.85 or len(boxes) >= 6 or p["share"] < 0.04:
+            break
+        x0, y0, x1, y1 = p["box"]
+        boxes.append((max(0, x0 - pad), max(0, y0 - pad), min(w, x1 + pad), min(h, y1 + pad)))
+        covered += p["share"]
+    if not boxes:
+        x0, y0, x1, y1 = L["box"]
+        boxes = [(max(0, x0 - pad), max(0, y0 - pad), min(w, x1 + pad), min(h, y1 + pad))]
+    lines = [f"# تعديل محلي بلا ذكاء اصطناعي: الطبقة «{L['name']}» {L['color']} ({L['share']:.0%}) → {dst_hex}، {len(boxes)} جزء"]
+    lines += [f'recolor(img, "{L["color"]}", "{dst_hex}", tolerance=34, region={b})' for b in boxes]
+    return "\n".join(lines), f"الطبقة {L['name']} {L['color']} → {dst_hex} في {len(boxes)} جزء"
+
+
+def with_edits(program: str, edit_lines: str) -> str:
+    """The program with these lines between the markers (the example comment is dropped)."""
+    a = re.search(r"^# EDITS START[ \t]*$", program, re.M)
+    b = re.search(r"^# EDITS END[ \t]*$", program, re.M)
+    if not a or not b or b.start() < a.end():
+        raise ValueError("the edit program has no marker lines")
+    return program[:a.start()] + "# EDITS START\n" + edit_lines.rstrip() + "\n" + program[b.start():]
 
 
 def edit_program(path: str | Path, title: str | None = None) -> tuple[str, str]:

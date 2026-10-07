@@ -459,6 +459,90 @@ class EditPack(unittest.TestCase):
         self.assertLessEqual(int(np.abs(px - (0x2e, 0xcc, 0x71)).max()), 3)
 
 
+class LocalEditAndAi(unittest.TestCase):
+    """Colour requests understood without an AI; the AI bridge's backends; a film from an image."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        im = Image.new("RGB", (160, 100), "#204060")
+        ImageDraw.Draw(im).rectangle([30, 20, 110, 80], fill="#8a8a8a")
+        im.save(self.tmp / "shirt.png")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_colour_requests_are_parsed_in_arabic_and_english(self):
+        import edit_pack as E
+        self.assertEqual(E.parse_colour_request("غيّر الذهبي إلى الأزرق"), ("#d4a53a", "#2f6fd6"))
+        self.assertEqual(E.parse_colour_request("غيّر لون القميص الرمادي إلى الأحمر"), ("#8a8a8a", "#d62828"))
+        self.assertEqual(E.parse_colour_request("اجعل الأبيض وردياً"), ("#f5f5f5", "#f06aa8"))
+        self.assertEqual(E.parse_colour_request("change the grey shirt to red"), ("#8a8a8a", "#d62828"))
+        self.assertEqual(E.parse_colour_request("make the gold blue"), ("#d4a53a", "#2f6fd6"))
+        self.assertIsNone(E.parse_colour_request("غيّر لون القميص إلى الأحمر"))     # which thing is the shirt? an AI's job
+        self.assertIsNone(E.parse_colour_request("make it brighter"))
+
+    def test_local_edit_recolours_the_nearest_layer_and_runs(self):
+        import edit_pack as E
+        local = E.local_edit(self.tmp / "shirt.png", "غيّر الرمادي إلى الأحمر")
+        self.assertIsNotNone(local)
+        self.assertIn('recolor(img, "#8a8a8a", "#d62828"', local[0])
+        program, _ = E.edit_program(self.tmp / "shirt.png", "shirt")
+        code, ok = E.restore(E.with_edits(program, local[0]))
+        self.assertTrue(ok)
+        self.assertNotIn("مثال", code)                                            # the example comment is gone
+        (self.tmp / "e.py").write_text(code, encoding="utf-8")
+        r = subprocess.run([sys.executable, "e.py"], cwd=self.tmp, capture_output=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = np.asarray(Image.open(self.tmp / "shirt_edited.png").convert("RGB")).astype(int)
+        self.assertLessEqual(int(np.abs(out[50, 70] - (0xd6, 0x28, 0x28)).max()), 3)
+        self.assertEqual(tuple(out[5, 5]), (0x20, 0x40, 0x60))
+        self.assertIsNone(E.local_edit(self.tmp / "shirt.png", "غيّر البنفسجي إلى الأحمر"))   # no such colour here
+
+    def test_ai_bridge_backends_and_fake_cli(self):
+        import ai_bridge as A
+        A._cache.clear()
+        saved = A.SETTINGS
+        A.SETTINGS = self.tmp / "settings.json"
+        try:
+            A.save_settings({"backend": "none"})
+            self.assertIsNone(A.backend())
+            with self.assertRaises(RuntimeError):
+                A.ask("x")
+            fake = self.tmp / "fake_claude.py"
+            fake.write_text("import sys\nprint('```python\\nimport io\\nx = 1\\n```')\n", encoding="utf-8")
+            A.save_settings({"backend": "cli"})
+            A._cache["cli"] = (True, "fake", 1e12)
+            real = A.claude_cli
+            A.claude_cli = lambda: sys.executable
+            try:
+                A._run_cli_args = None
+                orig = A._run_cli
+
+                def run(cli, prompt, timeout):
+                    return orig(sys.executable, prompt, timeout) if False else subprocess.run(
+                        [sys.executable, str(fake)], capture_output=True, text=True, encoding="utf-8", timeout=timeout).stdout
+                A._run_cli = run
+                self.assertEqual(A.backend(), "cli")
+                self.assertIn("x = 1", studio.extract_code(A.ask("anything")))
+            finally:
+                A._run_cli, A.claude_cli = orig, real
+            A.save_settings({"backend": "api", "anthropic_api_key": ""})
+            A._cache.clear()
+            self.assertIsNone(A.backend())                                       # api chosen but no key
+            self.assertIn("cli", A.status())
+        finally:
+            A.SETTINGS = saved
+            A._cache.clear()
+
+    def test_a_film_can_be_made_from_an_image(self):
+        import film
+        if not shutil.which("ffmpeg"):
+            self.skipTest("ffmpeg not on PATH")
+        Image.new("RGB", (48, 32), "#c03020").save(self.tmp / "tiny.png")
+        info = film.film_drawing(str(self.tmp / "tiny.png"), self.tmp / "tiny.mp4", fps=10, speed="fast", hold=0.2)
+        self.assertTrue((self.tmp / "tiny.mp4").exists() and (self.tmp / "tiny.mp4").stat().st_size > 500, info)
+
+
 class Studio(unittest.TestCase):
     def test_scenes_and_loading(self):
         self.assertIn("dragon_girl", studio.scenes())
