@@ -49,6 +49,8 @@ GRADES = {
     # night (Night Photography + Gurney): tungsten white balance turns the sky deep blue, lamps stay warm; darks go rod-blue
     "blue_hour": "colortemperature=temperature=4300:mix=0.85,curves=b='0/0.06 0.5/0.56 1/1':r='0/0 0.5/0.47 1/1',eq=saturation=1.08:contrast=1.06",
     "sodium_night": "curves=r='0/0 0.4/0.46 1/1':g='0/0 0.5/0.47 1/0.96':b='0/0.05 0.3/0.3 1/0.86',colorbalance=bs=0.10:gs=0.02:rh=0.06:bh=-0.08,eq=contrast=1.12",
+    # restoration of old/soft footage: light temporal denoise, cleaner blacks, highlight roll-off, warmer mids, CAS sharpening
+    "restore": "hqdn3d=1.2:1.2:3:3,eq=contrast=1.12:brightness=-0.015:saturation=1.07:gamma=0.97,curves=all='0/0 0.06/0.035 0.25/0.22 0.5/0.5 0.8/0.82 0.94/0.93 1/0.97',colorbalance=rs=0.012:bs=-0.01:rm=0.025:gm=0.005:bm=-0.02,cas=0.3",
     "magma_night": "curves=r='0/0.02 0.5/0.56 1/1':g='0/0 0.5/0.44 1/0.95':b='0/0.05 0.5/0.42 1/0.88',eq=contrast=1.1:saturation=1.1",
     "none": "null",
 }

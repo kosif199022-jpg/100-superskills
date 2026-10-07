@@ -116,3 +116,18 @@ G[0]["pipeline"] += [
     "مثال: examples/blue_hour.",
 ]
 G[0]["gates"] += ["في مشاهد الضباب: لون الضباب يساوي لون أفق السماء (وإلا تنتهي الأشكال البعيدة أغمق من السماء)؛ والتعريض الطويل بلا مسارات منقّطة."]
+
+# ── v3.4: one tool — kmotion.py (every command behind one entry, an Arabic menu, a launcher), reel / transcribe / decaption ──
+G[0]["desc"] += (" v3.4: أداة واحدة kmotion.py تجمع كل الأوامر بقائمة عربية، مع مونتاج تلقائي كامل (reel) وتفريغ الكلام (transcribe) "
+                 "وإزالة الترجمة المحروقة (decaption).")
+G[0]["trig_ar"] += ["إزالة الترجمة من الفيديو", "تفريغ فيديو", "مونتاج تلقائي لمقطع", "ريلز من مقطع"]
+G[0]["trig_en"] += ["remove burned subtitles", "transcribe video", "auto edit reel", "kmotion"]
+G[0]["pipeline"] += [
+    "أداة واحدة: python scripts/kmotion.py (بلا وسائط = قائمة عربية بالأرقام؛ help = كل الأوامر) — create: new/bundle/frames/check/render/sync/doctor؛ "
+    "sound: score/ambience/voice/beats/channels؛ edit: reel/montage/grade/captions/transcribe/decaption/footage/mocap؛ check: lint/sheet/speed/study/measure/loopcheck/inspect.",
+    "مونتاج تلقائي: kmotion.py reel CLIP.mp4 --out FINAL.mp4 — تفريغ (Whisper) → إزالة الترجمة المحروقة إن وُجدت → ترميم وتكبير 1080×1920 → تنظيف الصوت → "
+    "موسيقى فقط إن لم يكن في المقطع موسيقى → ترجمة كاريوكي عربية → −14 LUFS → بوابة التسليم. للمونتاج الموجَّه برسوم لكل فكرة ابنِ مشروع تركيب (مثال premium_edit).",
+    "إزالة الترجمة المحروقة: kmotion.py decaption VIDEO --out CLEAN.mp4 — حبر أبيض/أصفر بجوار حدّ أسود، الشريط يُكتشف تلقائياً، سطر الحقوق الثابت، "
+    "اللقطات الثابتة تُبنى من الإطارات المكشوفة (الخلفية الحقيقية)، والمتحركة تُرمَّم مع قاعدة عرض سطر الترجمة (الأسنان ليست ترجمة)، والتلاشي يحمل الشكل.",
+]
+G[0]["gates"] += ["قبل نشر مقطع لغيرك: انسب المصدر (أعد كتابة حسابه بخطك إن أُزيل)."]

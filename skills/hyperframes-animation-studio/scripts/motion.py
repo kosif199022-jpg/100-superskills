@@ -241,7 +241,7 @@ def mux_audio(index: Path, video: Path):
         mix = f"{''.join(labels)}amix=inputs={len(clips)}:normalize=0[mix]" if len(clips) > 1 else f"{labels[0]}anull[mix]"
     mix += ";[mix]loudnorm=I=-14:TP=-1:LRA=11[aout]"
     tmp = video.with_suffix(".tmp.mp4")
-    args += ["-filter_complex", ";".join(filters + [mix]), "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+    args += ["-filter_complex", ";".join(filters + [mix]), "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-ar", "48000",
              "-t", str(dur), "-movflags", "+faststart", str(tmp)]
     r = subprocess.run(args, capture_output=True, text=True)
     if r.returncode == 0 and tmp.exists():
