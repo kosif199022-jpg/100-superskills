@@ -145,11 +145,13 @@ SEEK_JS = """t => { window.__ready = false;
 
 
 def film_animate(source: str, out: Path, fps: int = 30, seconds: float | None = None, size=(1280, 720), blur: int = 1,
-                 shutter: float = 0.5, start: float = 0.0, frames_dir: Path | None = None) -> dict:
+                 shutter: float = 0.5, start: float = 0.0, frames_dir: Path | None = None, stack: str = "average") -> dict:
     """Frames of a seekable page through FFmpeg. blur = sub-frames per output frame: a real shutter, k times the cost.
     Pages that accumulate on the GPU themselves set window.__nativeBlur (the three-kit's makeFrameLoop does, reading
     window.__blur / __shutter / __fps); for every other page (GSAP compositions, canvas seek(t) films) the samples are
     taken here, centred on the frame's time, averaged in float and quantised once — the way film cameras smear motion.
+    shutter is in frames: 0.5 = a 180° shutter; 30 at 30 fps = a one-second long exposure (silky water, light trails).
+    stack="lighten" keeps each pixel's brightest sample instead of the mean — star trails and light painting.
     A page may expose window.render(t) (KOSIF / HyperFrames shim) or window.seek(t) (the canvas route)."""
     src = Path(source)
     t0 = time.perf_counter()
@@ -167,7 +169,8 @@ def film_animate(source: str, out: Path, fps: int = 30, seconds: float | None = 
             pg.wait_for_function("window.__ready === true || (typeof window.seek === 'function' && typeof window.render !== 'function')", timeout=budget)
             native = bool(pg.evaluate("!!window.__nativeBlur"))
             k = max(1, int(blur))
-            pg.evaluate("([k, s, f]) => { window.__blur = k; window.__shutter = s; window.__fps = f; }", [k if native else 1, float(shutter), int(fps)])
+            pg.evaluate("([k, s, f, st]) => { window.__blur = k; window.__shutter = s; window.__fps = f; window.__stack = st; }",
+                        [k if native else 1, float(shutter), int(fps), stack])
             dur = seconds or pg.evaluate("window.__duration || 4")
             enc = Encoder(out, w, h, fps)
             if frames_dir:
@@ -194,8 +197,12 @@ def film_animate(source: str, out: Path, fps: int = 30, seconds: float | None = 
                 else:                                              # centred shutter: samples at t + s/fps·((j+.5)/k − .5)
                     acc = np.zeros((h, w, 3), np.float32)
                     for j in range(k):
-                        acc += shot(t + shutter / fps * ((j + 0.5) / k - 0.5))
-                    rgb = np.clip(acc / k + 0.5, 0, 255).astype(np.uint8)
+                        sub = shot(t + shutter / fps * ((j + 0.5) / k - 0.5))
+                        if stack == "lighten":
+                            np.maximum(acc, sub, out=acc)
+                        else:
+                            acc += sub
+                    rgb = np.clip(acc if stack == "lighten" else acc / k + 0.5, 0, 255).astype(np.uint8)
                 enc.frame(rgb)
                 if frames_dir:
                     Image.fromarray(rgb).save(frames_dir / f"f{i:05d}.jpg", quality=92)

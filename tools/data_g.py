@@ -97,3 +97,22 @@ G[0]["gates"] += [
     "الترجمة العربية تُفحص على إطار مصيَّر: ترتيب الكلمات صحيح والكلمة المنطوقة وحدها مميّزة.",
 ]
 G[0]["outputs"] += ["src/channels.json + spectrogram.png (أفلام الصوت)", "out/NAME.montage.json (خطة المونتاج)", "inspect JSON (بوابة التسليم)"]
+
+# ── v3.3: the owner's reference books (Gurney, Joel Grimes, Night Photography, Veo 3 guide, 360° character sheet, colour theory) ──
+G[0]["desc"] += (" v3.3 من مكتبة الكتب: لغة لقطات حتمية من مفردات Veo (من أسفل، تتبّع، رافعة، دوران، دولي-زوم، يدوي، لوحة 360°)، "
+                 "وإضاءة رامبرانت/كلامشيل/حواف، ومنظور جوي بثلاث قنوات ورؤية ليلية وقناع ألوان (جورني)، وتعريض طويل يرسم مسارات الضوء.")
+G[0]["trig_ar"] += ["لقطة من أسفل", "دولي زوم", "إضاءة رامبرانت", "تعريض طويل", "مسارات ضوء", "الساعة الزرقاء", "منظور جوي"]
+G[0]["trig_en"] += ["dolly zoom", "rembrandt lighting", "long exposure", "light trails", "blue hour", "aerial perspective", "shot list camera"]
+G[0]["pipeline"] += [
+    "لغة اللقطات (دليل Veo 3 + لوحة الشخصية 360°): shot('low_angle'|'tracking'|'crane_up'|'push_in'|'orbit'|'handheld'|'dolly_zoom'|'whip_pan'|'turntable'…) "
+    "أو shotFromWords('low angle tracking shot') ثم sequence([{at, shot}]) بقطع حاد؛ الدولي-زوم يثبّت ارتفاع الموضوع في الكادر بالضبط؛ "
+    "turntable يصوّر الشخصية أمام/جانب/خلف/جانب كلوحة استمرارية قبل التحريك.",
+    "الإضاءة (Joel Grimes): lightPreset(scene, 'rembrandt'|'clamshell'|'edgy'|'ultrasoft'|'short'|'broad'|'sun')؛ النعومة = حجم المصدر الظاهر "
+    "(softnessDeg) لا قوته. اللون (Gurney): aerialPerspective() بلون ضباب = لون أفق السماء، fogTowardSun() للمنظور الجوي العكسي، "
+    "skyBounce() (الظلال المتجهة لأعلى باردة ولأسفل دافئة)، lightColor('sodium'|'moonlight'|'mercury_vapor'…)، makeLookPass({gamut, night, split})، "
+    "harmony()/MOTION.palette()، وmakeRenderer({tone: 'agx'}) ليحفظ لون المصابيح في الإضاءات العالية.",
+    "التعريض الطويل (Night Photography): motion.py render --blur 16 --shutter 30 --stack lighten — ثانية تعريض لكل إطار مكدّسة بالأفتح "
+    "(مسارات السيارات وأقواس النجوم)؛ الضوء الأسرع من حجمه بين عيّنتين يرسم نقاطاً فمُدّه بـ trailLength(speed). --stack average بغالق طويل = ماء حريري. "
+    "مثال: examples/blue_hour.",
+]
+G[0]["gates"] += ["في مشاهد الضباب: لون الضباب يساوي لون أفق السماء (وإلا تنتهي الأشكال البعيدة أغمق من السماء)؛ والتعريض الطويل بلا مسارات منقّطة."]

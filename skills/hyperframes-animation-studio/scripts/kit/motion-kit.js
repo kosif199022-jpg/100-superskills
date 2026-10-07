@@ -108,6 +108,14 @@
   /* a tween value sampled from a function of time, as GSAP keyframes (60 per second): seek-safe motion from code */
   function sampled(fn, t0, t1, fps) { const f = fps || 60, out = []; for (let i = 0, n = Math.max(1, Math.round((t1 - t0) * f)); i <= n; i++) { const v = fn(t0 + i / f); out.push(Object.assign({ duration: i ? 1 / f : 0, ease: "none" }, v)); } return out; }
 
+  /* colour harmonies (colour-theory cheat sheet; Gurney's advice: one family dominates, its complement only as an accent).
+     palette("split", 210) → { hues, css: ["hsl(...)", ...] }; o.sat, o.light (list) set saturation and the value plan */
+  function palette(scheme, baseHue, o) {
+    o = o || {};
+    const off = { complementary: [0, 180], analogous: [-30, 0, 30], triadic: [0, 120, 240], split: [0, 150, 210], tetradic: [0, 60, 180, 240] }[scheme] || [0];
+    const hues = off.map((d) => ((baseHue + d) % 360 + 360) % 360), L = o.light || [50], S = o.sat == null ? 60 : o.sat;
+    return { hues, css: hues.map((h, i) => `hsl(${Math.round(h)} ${S}% ${L[i % L.length]}%)`) };
+  }
   function rng(seed) {                                     // mulberry32: the same seed gives the same film
     let a = (seed >>> 0) || 1;
     return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -484,6 +492,6 @@
   function register(id, tl) { window.__timelines = window.__timelines || {}; window.__timelines[id] = tl; return tl; }
 
   window.MOTION = { version: 3, ease, E, bezier, logEase, lmix, clamp01, hitPulse, durFor, spring, SPRINGS, SPR, springStep, track, zoomTrack, beats, channels, sampled, rng, hash, svgEl,
-    words, revealWords, hideWords, riseWords, maskRise, typeOn, scramble, counter, drawPath, flowDash, morphPath, rain, vapour, sparkle,
+    palette, words, revealWords, hideWords, riseWords, maskRise, typeOn, scramble, counter, drawPath, flowDash, morphPath, rain, vapour, sparkle,
     camera, push, breathe, flash, iris, flood, rackFocus, roll, polarity, squash, speedBlur, shot, cursor, cursorPath, moveCursor, press, grain, vignette, shim, register };
 })();

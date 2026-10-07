@@ -170,3 +170,20 @@ shutter, float average; 3D pages keep their GPU accumulation (`window.__nativeBl
   character, action, camera, light, colour, VFX, atmosphere, materials, production design, composition, beauty).
 - Light like a set: `lightRig(scene, { key, fillStops: 2, rimStops: 0.5, keyK: 5600, fillK: 6500, rimK: 4300 })` (a
   2-stop fill = a 5:1 lighting ratio), `kelvin(K)`, `gel(fromK, toK)` (mired shift → CTO/CTB), `falloffStops(d1, d2)`.
+
+### v3.3 — the owner's reference books as code (references/book-lessons.md)
+- **Shot language** (Veo 3 guide, 360° character sheet): `shot(kind, o)` for establishing · wide · medium · closeup ·
+  extreme_closeup · low/high angle · birds_eye · dutch · tracking · crane_up/down · push_in · pull_back · orbit · arc ·
+  handheld (seeded sway) · dolly_zoom (subject height held exactly) · whip_pan · turntable; `shotFromWords("low angle
+  tracking shot")` combines words; `sequence([{ at, shot }])` cuts hard between shots; `applyShot(camera, s, post)`.
+- **Lighting presets** (Joel Grimes): `lightPreset(scene, "rembrandt" | "clamshell" | "edgy" | "ultrasoft" | "short" |
+  "broad" | "sun")`; softness is the source's apparent size: `softnessDeg(size, distance)` → shadow radius.
+- **Colour** (Gurney, colour theory): `aerialPerspective()` (three-channel fog; fog colour must equal the horizon sky or far
+  forms end darker than the sky), `fogTowardSun()` (reverse aerial perspective), `skyBounce()` (upfacing shadows cool,
+  downfacing warm), `LIGHT_SOURCES` / `lightColor("sodium")`, `makeLookPass({ gamut, night, split })`, `harmony()`,
+  `MOTION.palette()`; `makeRenderer(..., { tone: "agx" })` keeps lamp and taillight hues in the highlights.
+- **Long exposure** (Night Photography): `render --blur 16 --shutter 30 --stack lighten` = a 1 s exposure per frame with
+  the star-trail stack. A light that moves farther than its own size between sub-samples draws dots — stretch it by
+  `trailLength(speed)` (or add samples). `--stack average` with a long shutter = silky water.
+- Example `projects/blue_hour`: the same rock at 0.7/1.4/2.6/4.5 km turned blue and pale by air alone, sodium lamps against
+  blue hour, cars as light trails, stars as arcs, a slow push-in at road height.

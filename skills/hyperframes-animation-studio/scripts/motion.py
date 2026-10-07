@@ -168,7 +168,8 @@ def check(name: str) -> int:
     return r.returncode
 
 
-def render(name: str, engine: str, quality: str, fps: int | None, out: Path | None, blur: int = 1) -> Path:
+def render(name: str, engine: str, quality: str, fps: int | None, out: Path | None, blur: int = 1, shutter: float = 0.5,
+           stack: str = "average") -> Path:
     d = project_dir(name)
     index = d / "index.html"
     out = out or STUDIO / "out" / f"{d.name}.mp4"
@@ -187,7 +188,8 @@ def render(name: str, engine: str, quality: str, fps: int | None, out: Path | No
             raise SystemExit(f"hyperframes render failed ({r.returncode})")
     else:
         import film
-        film.film_animate(str(index), out, fps=fps or _fps(index), seconds=duration_of(index), size=_size(index), blur=blur)
+        film.film_animate(str(index), out, fps=fps or _fps(index), seconds=duration_of(index), size=_size(index), blur=blur,
+                          shutter=shutter, stack=stack)
         mux_audio(index, out)
     print(json.dumps({"file": str(out), "engine": "hyperframes" if use_hf else "studio", "blur": blur, "seconds": round(time.perf_counter() - t0, 1),
                       "mb": round(out.stat().st_size / 1e6, 2)}, ensure_ascii=False))
@@ -315,6 +317,8 @@ def main():
     p = sub.add_parser("render"); p.add_argument("project"); p.add_argument("--engine", default="auto", choices=["auto", "hyperframes", "studio"])
     p.add_argument("--quality", default="looks"); p.add_argument("--fps", type=int); p.add_argument("--out")
     p.add_argument("--blur", type=int, default=1, help="sub-frames per frame for pages that implement window.__blur (studio engine)")
+    p.add_argument("--shutter", type=float, default=0.5, help="exposure in frames: 0.5 = 180° shutter; 30 at 30 fps = a 1 s long exposure")
+    p.add_argument("--stack", default="average", choices=["average", "lighten"], help="lighten = star trails / light painting")
     p = sub.add_parser("measure"); p.add_argument("film"); p.add_argument("--fps", type=int, default=15)
     sub.add_parser("doctor")
     p = sub.add_parser("sync"); p.add_argument("project")
@@ -396,7 +400,7 @@ def main():
     elif a.cmd == "check":
         sys.exit(check(a.project))
     elif a.cmd == "render":
-        render(a.project, a.engine, a.quality, a.fps, Path(a.out) if a.out else None, a.blur)
+        render(a.project, a.engine, a.quality, a.fps, Path(a.out) if a.out else None, a.blur, a.shutter, a.stack)
     elif a.cmd == "measure":
         measure(Path(a.film), a.fps)
     elif a.cmd == "doctor":

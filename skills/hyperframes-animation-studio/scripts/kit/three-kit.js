@@ -75,7 +75,10 @@ export function makeRenderer(canvas, W, H, o = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
   renderer.setPixelRatio(1); renderer.setSize(W, H, false);
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = o.exposure == null ? 0.6 : o.exposure;
+  // tone curve: "aces" (punchy toe and shoulder, the default), "agx" (no hue shift in highlights: fire, neon, sunsets stay
+  // their colour — the photographic choice), "neutral" (Khronos PBR Neutral: albedo-faithful, products)
+  const TM = { aces: THREE.ACESFilmicToneMapping, agx: THREE.AgXToneMapping, neutral: THREE.NeutralToneMapping };
+  renderer.toneMapping = TM[o.tone || "aces"] || THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = o.exposure == null ? 0.6 : o.exposure;
   return renderer;
 }
 export function makeSky(scene, o = {}) {
@@ -421,7 +424,7 @@ export function makeFrameLoop(renderer, post, W, H, update) {
   const quadScene = new THREE.Scene(), quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   const accMat = new THREE.ShaderMaterial({
     uniforms: { tex: { value: null }, w: { value: 1 } }, depthTest: false, depthWrite: false, transparent: true, blending: THREE.CustomBlending,
-    blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, blendEquation: THREE.AddEquation,
+    blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, blendEquation: THREE.AddEquation,     // average; MaxEquation = "lighten" stack
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
     fragmentShader: `uniform sampler2D tex; uniform float w; varying vec2 vUv; void main(){ gl_FragColor = vec4(texture2D(tex, vUv).rgb * w, 1.0); }` });
   const copyMat = new THREE.ShaderMaterial({
@@ -434,6 +437,10 @@ export function makeFrameLoop(renderer, post, W, H, update) {
     const k = Math.max(1, Math.floor(window.__blur || 1));
     if (k === 1) { update(t); film.uniforms.time.value = t; composer.renderToScreen = true; composer.render(0); return; }
     const fps = window.__fps || 30, shutter = window.__shutter == null ? 0.5 : window.__shutter;
+    // window.__stack = "lighten" keeps each pixel's brightest sample (star trails, light painting, car trails at night);
+    // the default averages (motion blur; a long shutter > 1 frame gives silky water and soft crowds)
+    const lighten = window.__stack === "lighten";
+    accMat.blendEquation = lighten ? THREE.MaxEquation : THREE.AddEquation;
     composer.renderToScreen = false;
     const oldClear = renderer.autoClear;
     renderer.setRenderTarget(accRT); renderer.setClearColor(0x000000, 1); renderer.clear(); renderer.setRenderTarget(null);
@@ -441,7 +448,7 @@ export function makeFrameLoop(renderer, post, W, H, update) {
       update(Math.max(0, t - (shutter / fps) * (i / k)));
       film.uniforms.time.value = t;
       composer.render(0);
-      quad.material = accMat; accMat.uniforms.tex.value = composer.readBuffer.texture; accMat.uniforms.w.value = 1 / k;
+      quad.material = accMat; accMat.uniforms.tex.value = composer.readBuffer.texture; accMat.uniforms.w.value = lighten ? 1 : 1 / k;
       renderer.setRenderTarget(accRT); renderer.autoClear = false; renderer.render(quadScene, quadCam); renderer.autoClear = oldClear;
       renderer.setRenderTarget(null);
     }
@@ -1015,3 +1022,202 @@ export function lightRig(scene, o = {}) {
 }
 /* inverse square for point and spot lights: how many stops darker the background falls when it is d2 away and the subject d1 */
 export const falloffStops = (d1, d2) => 2 * Math.log2(d2 / d1);
+
+/* ═════════ v3.3: what the books teach, as code ═════════
+   Sources: the Veo 3 prompt guide (shot vocabulary), the 360° character sheet (turnarounds), Joel Grimes' Photographer's
+   Guide to Lighting (cross light, clamshell, edge lights; softness = source size relative to the subject), James Gurney's
+   Color and Light (aerial perspective, warm light / cool shadow, gamut masks, night colour), Night Photography (long
+   exposures, light trails, star-trail stacking), a colour-theory cheat sheet (harmonies, value). */
+
+/* ── shot language: the words directors and video-model prompts use, as deterministic cameras ──
+   shot(kind, o) → (t) => { pos, look, fov, roll, focus }.  o.subject (Vector3), o.size (subject height, m), o.t0/o.t1.
+   kinds: establishing · wide · medium · closeup · extreme_closeup · low_angle · high_angle · birds_eye · dutch ·
+   tracking · crane_up · crane_down · push_in · pull_back · orbit · arc · handheld · dolly_zoom · whip_pan · turntable */
+export function shot(kind, o = {}) {
+  const S = o.subject || new THREE.Vector3(0, 1, 0), size = o.size || 1.7, t0 = o.t0 || 0, t1 = o.t1 == null ? t0 + 4 : o.t1;
+  const u = (t) => clamp01((t - t0) / Math.max(1e-3, t1 - t0)), ez = (x) => x * x * (3 - 2 * x);
+  const fov0 = o.fov || 35, az0 = (o.azimuth == null ? -20 : o.azimuth) * Math.PI / 180;
+  // the distance that frames the subject at a given fraction of the frame height with this fov
+  const distFor = (frac, fov) => (size / frac) / (2 * Math.tan((fov * Math.PI / 180) / 2));
+  const FR = { establishing: 0.06, wide: 0.25, medium: 0.55, closeup: 1.6, extreme_closeup: 4.0 };
+  const around = (az, d, h) => new THREE.Vector3(S.x + Math.sin(az) * d, S.y + h, S.z + Math.cos(az) * d);
+  const r = rng(o.seed || 7), ph = Array.from({ length: 6 }, () => r() * 100);
+  const shake = (t, amp) => {                                  // handheld: three octaves of smooth noise around a ~1.3 Hz sway
+    const n = (f, k) => Math.sin(t * f + ph[k]) * 0.6 + Math.sin(t * f * 2.17 + ph[k + 1]) * 0.3 + Math.sin(t * f * 4.9 + ph[k]) * 0.1;
+    return [n(1.3, 0) * amp, n(1.1, 2) * amp * 0.7, n(0.9, 4) * amp * 0.25];
+  };
+  return (t) => {
+    const k = u(t), e = ez(k); let fov = fov0, roll = 0, pos, look = S.clone();
+    const d = o.distance || distFor(FR[kind] || FR[o.frame] || 0.55, fov);
+    switch (kind) {
+      case "low_angle": pos = around(az0, d, -size * 0.45); look = S.clone().add(new THREE.Vector3(0, size * 0.15, 0)); break;
+      case "high_angle": pos = around(az0, d * 0.9, size * 1.6); break;
+      case "birds_eye": pos = new THREE.Vector3(S.x + 0.01, S.y + d * 1.4, S.z); break;
+      case "dutch": pos = around(az0, d, size * 0.05); roll = (o.roll || 12) * Math.PI / 180; break;
+      case "tracking": { const v = o.velocity || new THREE.Vector3(1.2, 0, 0); const S2 = S.clone().addScaledVector(v, t - t0);
+        pos = new THREE.Vector3(S2.x + Math.sin(az0) * d, S2.y + size * 0.1, S2.z + Math.cos(az0) * d); look = S2; break; }
+      case "crane_up": pos = around(az0, d * (1 + 0.6 * e), size * (0.2 + 2.2 * e)); break;
+      case "crane_down": pos = around(az0, d * (1.6 - 0.6 * e), size * (2.4 - 2.2 * e)); break;
+      case "push_in": pos = around(az0, d * (1.8 - 0.8 * e), size * 0.1); break;             // slow push: tension rises
+      case "pull_back": pos = around(az0, d * (1.0 + 1.6 * e), size * (0.1 + 0.4 * e)); break;  // reveal: context arrives
+      case "orbit": pos = around(az0 + (o.degrees || 360) * Math.PI / 180 * k, d, size * 0.25); break;
+      case "arc": pos = around(az0 + (o.degrees || 60) * Math.PI / 180 * e, d, size * 0.15); break;
+      case "turntable": {                                        // the 360° character sheet: front, side, back, side holds
+        const q = Math.min(3, Math.floor(k * 4)), w = k * 4 - q, hold = w < 0.7 ? 0 : ez((w - 0.7) / 0.3);
+        pos = around(az0 + (q + hold) * Math.PI / 2, distFor(0.8, fov), 0); break; }
+      case "dolly_zoom": {                                       // Vertigo: dolly while zooming so the subject keeps its size
+        const dA = o.from || d, dB = o.to || d * 0.45, dd = dA + (dB - dA) * e, h = 2 * dA * Math.tan(fov0 * Math.PI / 360);
+        pos = around(az0, dd, size * 0.05); fov = 2 * Math.atan(h / (2 * dd)) * 180 / Math.PI; break; }
+      case "whip_pan": { const a = az0 + (o.degrees || 90) * Math.PI / 180 * ez(clamp01((k - 0.4) / 0.2));
+        pos = around(az0, d, size * 0.1); look = new THREE.Vector3(pos.x - Math.sin(a) * d, S.y, pos.z - Math.cos(a) * d); break; }
+      default: pos = around(az0, d, size * 0.1);
+    }
+    if (o.low && kind !== "low_angle") { pos.y -= size * 0.5; look.y += size * 0.12; }        // compound words: "low angle tracking"
+    if (o.high && kind !== "high_angle") pos.y += size * 1.4;
+    if (o.dutch && kind !== "dutch") roll += 10 * Math.PI / 180;
+    if (kind === "handheld" || o.handheld) { const [sx, sy, sr] = shake(t, (o.shake || 1) * 0.012 * d);
+      pos.x += sx; pos.y += sy; roll += sr * 0.08; }
+    return { pos, look, fov, roll, focus: pos.distanceTo(look) };
+  };
+}
+/* apply a shot sample to a camera (and to the depth-of-field pass, when given) */
+export function applyShot(camera, s, post) {
+  camera.position.copy(s.pos); camera.lookAt(s.look); if (s.roll) camera.rotateZ(s.roll);
+  if (Math.abs(camera.fov - s.fov) > 1e-4) { camera.fov = s.fov; camera.updateProjectionMatrix(); }
+  if (post && post.bokeh) post.bokeh.uniforms.focus.value = s.focus;
+}
+/* words → shot: "low angle tracking shot", "slow push-in", "crane up", "orbit", "dolly zoom" … (the Veo vocabulary) */
+export const SHOT_WORDS = [["dolly zoom", "dolly_zoom"], ["vertigo", "dolly_zoom"], ["whip", "whip_pan"], ["turntable", "turntable"],
+  ["360", "turntable"], ["orbit", "orbit"], ["arc shot", "arc"], ["crane up", "crane_up"], ["crane down", "crane_down"], ["push", "push_in"],
+  ["pull back", "pull_back"], ["pull-back", "pull_back"], ["tracking", "tracking"], ["bird", "birds_eye"], ["top down", "birds_eye"],
+  ["low angle", "low_angle"], ["high angle", "high_angle"], ["dutch", "dutch"], ["extreme close", "extreme_closeup"], ["close-up", "closeup"],
+  ["close up", "closeup"], ["establishing", "establishing"], ["wide", "wide"], ["medium", "medium"], ["handheld", "handheld"]];
+export function shotFromWords(text, o = {}) {
+  const w = String(text).toLowerCase(), hit = SHOT_WORDS.find(([k]) => w.includes(k));
+  return shot(hit ? hit[1] : "medium", Object.assign({ handheld: w.includes("handheld"), low: w.includes("low angle"), high: w.includes("high angle"),
+    dutch: w.includes("dutch") }, o));
+}
+
+/* ── lighting the way portrait and film photographers do (Joel Grimes) ──
+   "rembrandt" (cross light ~70–90° to the camera and high: the triangle on the shadow cheek) · "clamshell" (top-down over
+   the camera + a bounce below) · "edgy" (two edge lights behind left and right + overhead) · "ultrasoft" (huge sources
+   close) · "short" / "broad" · "sun" (a hard low sun + blue sky fill). Softness is the source's apparent size. */
+export const softnessDeg = (sizeM, distM) => 2 * Math.atan(sizeM / (2 * distM)) * 180 / Math.PI;
+export function lightPreset(scene, preset = "rembrandt", o = {}) {
+  const P = {
+    rembrandt: { keyAz: -75, keyEl: 40, fillStops: 2.5, rimStops: -0.5, rimAz: 150, size: 1.0 },
+    clamshell: { keyAz: 0, keyEl: 55, fillAz: 0, fillEl: -25, fillStops: 1.0, rimStops: -1.5, size: 0.9 },
+    edgy: { keyAz: 0, keyEl: 60, fillStops: 4, rimStops: 0.8, rimAz: 140, size: 0.6, twoEdges: true },
+    ultrasoft: { keyAz: -35, keyEl: 30, fillStops: 0.8, rimStops: -0.3, size: 2.1 },
+    short: { keyAz: 55, keyEl: 30, fillStops: 2.5, rimStops: 0, size: 0.9 },
+    broad: { keyAz: -55, keyEl: 30, fillStops: 2.0, rimStops: -1, size: 0.9 },
+    sun: { keyAz: -60, keyEl: 18, fillStops: 2.3, keyK: 3600, fillK: 9000, rimStops: -1, size: 0.05 },
+  }[preset] || {};
+  const c = Object.assign({}, P, o);
+  const rig = lightRig(scene, c);
+  if (c.twoEdges) { const l2 = rig.rim.clone(); l2.position.x = 2 * (c.target ? c.target.x : 0) - l2.position.x; scene.add(l2); rig.rim2 = l2; }
+  const deg = softnessDeg(c.size || 0.9, c.distance || 2);
+  rig.key.shadow.radius = Math.max(1, deg / 3); rig.key.shadow.blurSamples = 16;   // with VSM/PCFSoft shadows this reads as size
+  rig.softness = deg;
+  return rig;
+}
+
+/* ── colour, after Gurney ──
+   aerialPerspective(): air scatters blue more than red, so far things lose contrast and drift toward the sky colour while
+   distant lights warm. Replaces three's grey fog with three-channel extinction for every built-in material; call it before
+   the first render. scatter = per-channel multipliers of the scene fog density. */
+export function aerialPerspective(o = {}) {
+  const k = (o.scatter || [0.62, 0.85, 1.25]).map((x) => Number(x).toFixed(4));
+  THREE.ShaderChunk.fog_fragment = [
+    "#ifdef USE_FOG",
+    "  #ifdef FOG_EXP2",
+    "    vec3 fogK = vec3(" + k.join(", ") + ") * fogDensity * vFogDepth;",
+    "    vec3 fogFactor3 = 1.0 - exp(-fogK * fogK);",
+    "  #else",
+    "    vec3 fogFactor3 = clamp(vec3(smoothstep(fogNear, fogFar, vFogDepth)) * vec3(" + k.join(", ") + "), 0.0, 1.0);",
+    "  #endif",
+    "  gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, fogFactor3);",
+    "#endif", ""].join("\n");
+}
+/* the look pass: Gurney's gamut mask (hues outside a chosen wedge lose saturation, so the palette holds together), night
+   vision (Purkinje: the darks go rod-grey and blue-shifted, reds sink first) and split toning (warm lights, cool shadows).
+   look.userData.set({ gamut: [centreHueDeg, widthDeg, strength], night: 0–1, split: 0–1 }) */
+export function makeLookPass(o = {}) {
+  const pass = new ShaderPass({
+    uniforms: { tDiffuse: { value: null }, uGamC: { value: 0 }, uGamW: { value: 360 }, uGamS: { value: 0 }, uNight: { value: 0 }, uSplit: { value: 0 },
+                uWarm: { value: new THREE.Color(o.warm || 0xffc98a) }, uCool: { value: new THREE.Color(o.cool || 0x5a7fb8) } },
+    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+    fragmentShader: [
+      "uniform sampler2D tDiffuse; uniform float uGamC, uGamW, uGamS, uNight, uSplit; uniform vec3 uWarm, uCool; varying vec2 vUv;",
+      "vec3 rgb2hsv(vec3 c){ vec4 K = vec4(0., -1./3., 2./3., -1.); vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));",
+      "  vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r)); float d = q.x - min(q.w, q.y); float e = 1e-10;",
+      "  return vec3(abs(q.z + (q.w - q.y) / (6. * d + e)), d / (q.x + e), q.x); }",
+      "vec3 hsv2rgb(vec3 c){ vec3 p = abs(fract(c.xxx + vec3(1., 2./3., 1./3.)) * 6. - 3.); return c.z * mix(vec3(1.), clamp(p - 1., 0., 1.), c.y); }",
+      "void main(){ vec3 c = texture2D(tDiffuse, vUv).rgb;",
+      "  if (uGamS > 0.0) { vec3 h = rgb2hsv(max(c, vec3(0.0))); float dh = abs(mod(h.x * 360.0 - uGamC + 540.0, 360.0) - 180.0);",
+      "    float inside = 1.0 - smoothstep(uGamW * 0.5, uGamW * 0.5 + 25.0, dh); h.y *= mix(1.0, inside, uGamS); c = hsv2rgb(h); }",
+      "  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));",
+      "  if (uSplit > 0.0) { vec3 w = uWarm / max(0.01, dot(uWarm, vec3(0.3333))), k = uCool / max(0.01, dot(uCool, vec3(0.3333)));",
+      "    c *= mix(vec3(1.0), mix(k, w, smoothstep(0.1, 0.7, l)), uSplit * 0.35); }",
+      "  if (uNight > 0.0) { float rod = dot(c, vec3(0.05, 0.55, 0.40));            // the scotopic response peaks in blue-green",
+      "    float dark = 1.0 - smoothstep(0.02, 0.35, l);                              // only the dim parts switch to rods",
+      "    c = mix(c, vec3(rod) * vec3(0.72, 0.86, 1.12), uNight * dark); c *= 1.0 - 0.25 * uNight * dark; }",
+      "  gl_FragColor = vec4(c, 1.0); }"].join("\n") });
+  pass.userData = { set: (g) => { const u = pass.uniforms;
+    if (g.gamut) { u.uGamC.value = g.gamut[0]; u.uGamW.value = g.gamut[1]; u.uGamS.value = g.gamut[2] == null ? 1 : g.gamut[2]; }
+    if (g.night != null) u.uNight.value = g.night;
+    if (g.split != null) u.uSplit.value = g.split; } };
+  pass.userData.set(o);
+  return pass;
+}
+/* the colour-theory harmonies as hues (degrees) and THREE colours: complementary, analogous, triadic, split, tetradic */
+export function harmony(scheme, baseHue, o = {}) {
+  const off = { complementary: [0, 180], analogous: [-30, 0, 30], triadic: [0, 120, 240], split: [0, 150, 210], tetradic: [0, 60, 180, 240] }[scheme] || [0];
+  const hues = off.map((d) => ((baseHue + d) % 360 + 360) % 360), L = o.light || [0.5];
+  return { hues, colors: hues.map((h, i) => new THREE.Color().setHSL(h / 360, o.sat == null ? 0.6 : o.sat, L[i % L.length])) };
+}
+
+/* named light sources (Gurney: "each has a distinctive spectral power distribution"; Night Photography: white balance) */
+export const LIGHT_SOURCES = {
+  candle: 1850, firelight: 1900, sodium: 0xffa040, tungsten: 2700, halogen: 3200, sunrise: 3000, golden_hour: 3500,
+  led_warm: 3000, led_neutral: 4000, mercury_vapor: 0xbff0dc, metal_halide: 4300, fluorescent: 0xe8f5e6, moonlight: 0x9fb4d9,
+  daylight: 5600, overcast: 6500, open_shade: 8000, blue_sky: 11000, neon_red: 0xff2a3a, neon_blue: 0x3a7bff,
+};
+export function lightColor(name) {
+  const v = LIGHT_SOURCES[name]; if (v == null) return new THREE.Color(0xffffff);
+  return v > 40000 || v < 1000 ? new THREE.Color(v) : kelvin(v);
+}
+/* Gurney's reflected-light rule: in shadow, upfacing planes are cool (they see the sky) and downfacing planes are warm
+   (they see the lit ground). A hemisphere light with a sky colour above and the bounce colour below does exactly that. */
+export function skyBounce(scene, o = {}) {
+  const h = new THREE.HemisphereLight(o.sky == null ? lightColor("blue_sky") : o.sky, o.ground == null ? 0xb07a4a : o.ground, o.intensity == null ? 0.6 : o.intensity);
+  scene.add(h); return h;
+}
+/* reverse atmospheric perspective: looking toward a low sun through moist or dusty air the haze turns orange, away from it
+   the haze stays blue. Call every frame: fogTowardSun(scene, camera, sunDir, cool, warm, amount) */
+const _fv = new THREE.Vector3();
+export function fogTowardSun(scene, camera, sunDir, cool, warm, amount = 1) {
+  if (!scene.fog) return;
+  camera.getWorldDirection(_fv);
+  const k = Math.pow(Math.max(0, _fv.dot(sunDir.clone().normalize())), 3) * amount;
+  scene.fog.color.copy(new THREE.Color(cool)).lerp(new THREE.Color(warm), k);
+}
+
+/* a shot list as a camera: [{ at: 0, shot: "establishing" }, { at: 2.5, shot: "low angle tracking" }, …] → (t) => sample.
+   Hard cuts between entries (no crossfades); each entry's t0/t1 default to its own span, so moves start at the cut. */
+export function sequence(list, o = {}) {
+  const items = list.map((e, i) => { const t0 = e.at, t1 = i + 1 < list.length ? list[i + 1].at : (o.seconds || t0 + 4);
+    const opt = Object.assign({}, o, e.options || {}, { t0, t1 });
+    return { t0, cam: typeof e.shot === "function" ? e.shot : (SHOT_WORDS.some(([k, v]) => v === e.shot) || ["establishing", "wide", "medium", "closeup", "extreme_closeup"].includes(e.shot)
+      ? shot(e.shot, opt) : shotFromWords(e.shot, opt)) }; });
+  return (t) => { let i = 0; while (i < items.length - 1 && t >= items[i + 1].t0) i++; return items[i].cam(t); };
+}
+
+/* a light that moves d metres between two sub-samples of a lighten-stacked long exposure leaves a dotted trail unless the
+   dots overlap. trailLength(speed) is that gap for the current render (0 outside a lighten stack); stretch the light along
+   its motion by it — mesh.scale.z = 1 + trailLength(v) / (2 * radius) — and the trail is continuous. */
+export function trailLength(speed) {
+  if (typeof window === "undefined" || window.__stack !== "lighten") return 0;
+  const k = Math.max(1, Math.floor(window.__blur || 1)), sh = window.__shutter == null ? 0.5 : window.__shutter, fps = window.__fps || 30;
+  return Math.abs(speed) * (sh / fps) / k;
+}

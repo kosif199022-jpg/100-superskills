@@ -46,6 +46,9 @@ GRADES = {
     "vintage_film": "curves=all='0/0.06 0.5/0.5 1/0.94':r='0/0 0.5/0.52 1/1':b='0/0.04 0.5/0.48 1/0.96',noise=alls=10:allf=t+u:all_seed=7,eq=contrast=1.05:saturation=0.9",
     "matrix_tech": "curves=g='0/0.04 0.5/0.54 1/1':b='0/0 0.5/0.46 1/0.92',colorbalance=rs=-0.08:gs=0.1:bs=-0.05,eq=contrast=1.15:saturation=0.85",
     "clean_commercial": "eq=contrast=1.12:saturation=1.18:brightness=0.01,unsharp=5:5:0.8:5:5:0.0",
+    # night (Night Photography + Gurney): tungsten white balance turns the sky deep blue, lamps stay warm; darks go rod-blue
+    "blue_hour": "colortemperature=temperature=4300:mix=0.85,curves=b='0/0.06 0.5/0.56 1/1':r='0/0 0.5/0.47 1/1',eq=saturation=1.08:contrast=1.06",
+    "sodium_night": "curves=r='0/0 0.4/0.46 1/1':g='0/0 0.5/0.47 1/0.96':b='0/0.05 0.3/0.3 1/0.86',colorbalance=bs=0.10:gs=0.02:rh=0.06:bh=-0.08,eq=contrast=1.12",
     "magma_night": "curves=r='0/0.02 0.5/0.56 1/1':g='0/0 0.5/0.44 1/0.95':b='0/0.05 0.5/0.42 1/0.88',eq=contrast=1.1:saturation=1.1",
     "none": "null",
 }
