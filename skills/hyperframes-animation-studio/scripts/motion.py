@@ -6,6 +6,12 @@ rendered by HyperFrames' CLI when it is installed here, or by KOSIF Studio's own
     python motion.py check PROJECT                                                             HyperFrames lint + runtime validation
     python motion.py render PROJECT [--engine auto|hyperframes|studio] [--quality looks] [--fps 30] [--out X.mp4]
     python motion.py measure FILM.mp4 [--fps 15]                                               motion energy: still share, peak, mean
+    python motion.py lint PROJECT                                                               determinism, contract and taste checks
+    python motion.py sheet FILM.mp4 [--at 4.2] [--out DIR]                                      contact sheet, phone test, strip, review.md
+    python motion.py speed FILM.mp4                                                             px/frame from optical flow: blur or redesign
+    python motion.py beats TRACK.wav [--out beats.json]                                         a beat grid (bpm, beats, downbeats, hits)
+    python motion.py study REFERENCE.mp4 [--out DIR]                                            measure a reference film → style_guide.md
+    python motion.py footage CLIP.mp4 --out projects/X/assets/clip.mp4 [--from 0 --dur 5]       an all-intra clip a composition can seek
     python motion.py doctor                                                                     what is available on this machine
 
 A composition is index.html with a root <div data-composition-id data-width data-height data-duration>, GSAP
@@ -67,7 +73,7 @@ def duration_of(index: Path) -> float:
     return float(m.group(1)) if m else 10.0
 
 
-def new(name: str, seconds: float, fps: int, size: str, title: str, three_d: bool = False) -> Path:
+def new(name: str, seconds: float, fps: int, size: str, title: str, three_d: bool = False, canvas: bool = False) -> Path:
     """A project from the flat template, or (three_d) from the cinematic 3D template: src/main.js on the three-kit,
     bundled by `motion.py bundle` before rendering."""
     d = PROJECTS / name
@@ -82,6 +88,8 @@ def new(name: str, seconds: float, fps: int, size: str, title: str, three_d: boo
         kit_rel = Path(os.path.relpath(HERE / "kit" / "three-kit.js", d / "src")).as_posix()   # the kit, from wherever the project is
         js = fill((tdir / "src" / "main.js").read_text(encoding="utf-8")).replace("../../../kit/three-kit.js", kit_rel)
         (d / "src" / "main.js").write_text(js, encoding="utf-8")
+    elif canvas:                                               # the canvas route: one file, window.seek(t)
+        (d / "index.html").write_text(fill((TEMPLATE.parent / "canvas.html").read_text(encoding="utf-8")), encoding="utf-8")
     else:
         (d / "index.html").write_text(fill(TEMPLATE.read_text(encoding="utf-8")), encoding="utf-8")
     sync_assets(d)
@@ -105,7 +113,9 @@ def bundle(name: str, entry: str = "src/main.js", out: str = "assets/main.bundle
         raise SystemExit("esbuild is not installed here: npm install esbuild three  (in motion/)")
     node = shutil.which("node")
     target = d / out
-    r = subprocess.run([node, str(esb), str(d / entry), "--bundle", "--format=iife", "--minify", "--target=es2020",
+    # assets imported by the scene are inlined (GLB/HDR/PNG/JPG/WAV as data URLs, JSON as data), so file:// renders need no server
+    loaders = [f"--loader:{ext}=dataurl" for ext in (".glb", ".gltf", ".hdr", ".png", ".jpg", ".jpeg", ".webp", ".wav", ".bin")] + ["--loader:.json=json"]
+    r = subprocess.run([node, str(esb), str(d / entry), "--bundle", "--format=iife", "--minify", "--target=es2020", *loaders,
                         f"--outfile={target}"], cwd=HERE, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode != 0:
         raise SystemExit(r.stderr[-1500:])
@@ -113,22 +123,39 @@ def bundle(name: str, entry: str = "src/main.js", out: str = "assets/main.bundle
     return target
 
 
-def frames(name: str, times: list[float], out: Path | None) -> list[Path]:
-    """Key frames through the studio's own renderer (headless Edge; window.render(t) from the kit's shim)."""
+def frames(name: str, times: list[float], out: Path | None, timeout: float = 300.0) -> list[Path]:
+    """Key frames through the studio's renderer: the page is built once (3D scenes take a while to generate their
+    textures), then sought to each time; window.render(t) or window.seek(t)."""
+    import io
+    import re
     import html_render
+    from playwright.sync_api import sync_playwright
+    import film
     d = project_dir(name)
     out = out or d / "frames"
     out.mkdir(parents=True, exist_ok=True)
-    import re
     html = (d / "index.html").read_text(encoding="utf-8")
     m = re.search(r'data-width="(\d+)"[^>]*data-height="(\d+)"', html)
     w, h = (int(m.group(1)), int(m.group(2))) if m else (1920, 1080)
     files = []
-    for t in times:
-        f = out / f"t{t:05.2f}.png"
-        html_render.render_html(d / "index.html", f, w, h, t)
-        files.append(f)
-        print(f)
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=html_render.browser_path(), headless=True, args=html_render.GPU_FLAGS[2:])
+        pg = browser.new_context(viewport={"width": w, "height": h}).new_page()
+        errors = []
+        pg.on("pageerror", lambda e: errors.append(str(e)[:200]))
+        pg.on("console", lambda m: errors.append("console." + m.type + ": " + m.text[:200]) if m.type in ("error", "warning") else None)
+        pg.goto((d / "index.html").resolve().as_uri(), wait_until="load", timeout=timeout * 1000)
+        pg.wait_for_function("window.__ready === true || typeof window.seek === 'function'", timeout=timeout * 1000)
+        for t in times:
+            pg.evaluate(film.SEEK_JS, t)
+            pg.wait_for_function("window.__ready === true", timeout=timeout * 1000)
+            f = out / f"t{t:05.2f}.png"
+            f.write_bytes(pg.screenshot(type="png"))
+            files.append(f)
+            print(f)
+        browser.close()
+        if errors:
+            print("page errors:", *errors[:5], sep="\n  ")
     return files
 
 
@@ -160,7 +187,7 @@ def render(name: str, engine: str, quality: str, fps: int | None, out: Path | No
             raise SystemExit(f"hyperframes render failed ({r.returncode})")
     else:
         import film
-        film.film_animate(str(index), out, fps=fps or 30, seconds=duration_of(index), size=_size(index), blur=blur)
+        film.film_animate(str(index), out, fps=fps or _fps(index), seconds=duration_of(index), size=_size(index), blur=blur)
         mux_audio(index, out)
     print(json.dumps({"file": str(out), "engine": "hyperframes" if use_hf else "studio", "blur": blur, "seconds": round(time.perf_counter() - t0, 1),
                       "mb": round(out.stat().st_size / 1e6, 2)}, ensure_ascii=False))
@@ -182,13 +209,14 @@ def mux_audio(index: Path, video: Path):
         if not f.exists():
             continue
         g = lambda k, d: float(re.search(rf'data-{k}="([\d.]+)"', tag).group(1)) if re.search(rf'data-{k}="([\d.]+)"', tag) else d
-        clips.append((f, g("start", 0.0), g("duration", 0.0), g("volume", 1.0), g("fade-out", 0.0), g("fade-in", 0.0)))
+        role = re.search(r'data-role="([^"]+)"', tag)
+        clips.append((f, g("start", 0.0), g("duration", 0.0), g("volume", 1.0), g("fade-out", 0.0), g("fade-in", 0.0), role.group(1) if role else ""))
     if not clips or not shutil.which("ffmpeg"):
         return
     dur = duration_of(index)
     args = ["ffmpeg", "-y", "-v", "error", "-i", str(video)]
     filters, labels = [], []
-    for i, (f, start, d, vol, fo, fi) in enumerate(clips):
+    for i, (f, start, d, vol, fo, fi, _role) in enumerate(clips):
         args += ["-i", str(f)]
         fl = f"[{i + 1}:a]volume={vol}"
         if fi:
@@ -198,9 +226,18 @@ def mux_audio(index: Path, video: Path):
         fl += f",adelay={int(start * 1000)}|{int(start * 1000)}[a{i}]"
         filters.append(fl)
         labels.append(f"[a{i}]")
-    # mixed, then normalised to what the platforms normalise to: -14 LUFS integrated, true peak -1 dB
-    mix = (f"{''.join(labels)}amix=inputs={len(clips)}:normalize=0[mix]" if len(clips) > 1 else f"{labels[0]}anull[mix]") + \
-          ";[mix]loudnorm=I=-14:TP=-1:LRA=11[aout]"
+    # narration (data-role="voice") ducks everything else through a sidechain compressor so the words stay on top;
+    # then the mix is normalised to what the platforms normalise to: -14 LUFS integrated, true peak -1 dB
+    vo = [labels[i] for i, c in enumerate(clips) if c[6] == "voice"]
+    bed = [labels[i] for i, c in enumerate(clips) if c[6] != "voice"]
+    if vo and bed:
+        mix = ((f"{''.join(bed)}amix=inputs={len(bed)}:normalize=0[bed];" if len(bed) > 1 else f"{bed[0]}anull[bed];")
+               + (f"{''.join(vo)}amix=inputs={len(vo)}:normalize=0[vo];" if len(vo) > 1 else f"{vo[0]}anull[vo];")
+               + "[vo]asplit=2[vk][vm];[bed][vk]sidechaincompress=threshold=0.03:ratio=6:attack=20:release=380[duck];"
+               + "[duck][vm]amix=inputs=2:normalize=0[mix]")
+    else:
+        mix = f"{''.join(labels)}amix=inputs={len(clips)}:normalize=0[mix]" if len(clips) > 1 else f"{labels[0]}anull[mix]"
+    mix += ";[mix]loudnorm=I=-14:TP=-1:LRA=11[aout]"
     tmp = video.with_suffix(".tmp.mp4")
     args += ["-filter_complex", ";".join(filters + [mix]), "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
              "-t", str(dur), "-movflags", "+faststart", str(tmp)]
@@ -209,6 +246,12 @@ def mux_audio(index: Path, video: Path):
         tmp.replace(video)
     else:
         print("audio mux skipped:", (r.stderr or "")[-300:])
+
+
+def _fps(index: Path) -> int:
+    import re
+    m = re.search(r'data-fps="(\d+)"', index.read_text(encoding="utf-8"))
+    return int(m.group(1)) if m else 30
 
 
 def _size(index: Path) -> tuple[int, int]:
@@ -266,6 +309,7 @@ def main():
     p = sub.add_parser("new"); p.add_argument("name"); p.add_argument("--seconds", type=float, default=8); p.add_argument("--fps", type=int, default=30)
     p.add_argument("--size", default="1920x1080"); p.add_argument("--title", default="")
     p.add_argument("--3d", dest="three_d", action="store_true", help="a cinematic Three.js project on the three-kit (bundle it before rendering)")
+    p.add_argument("--canvas", action="store_true", help="the canvas route: one index.html, one canvas, window.seek(t)")
     p = sub.add_parser("frames"); p.add_argument("project"); p.add_argument("--times", default="0.5,2,4,6,8"); p.add_argument("--out")
     p = sub.add_parser("check"); p.add_argument("project")
     p = sub.add_parser("render"); p.add_argument("project"); p.add_argument("--engine", default="auto", choices=["auto", "hyperframes", "studio"])
@@ -275,11 +319,78 @@ def main():
     sub.add_parser("doctor")
     p = sub.add_parser("sync"); p.add_argument("project")
     p = sub.add_parser("bundle"); p.add_argument("project"); p.add_argument("--entry", default="src/main.js"); p.add_argument("--out", default="assets/main.bundle.js")
+    p = sub.add_parser("lint"); p.add_argument("project")
+    p = sub.add_parser("sheet"); p.add_argument("film"); p.add_argument("--at", type=float); p.add_argument("--out")
+    p = sub.add_parser("speed"); p.add_argument("film"); p.add_argument("--fps", type=float)
+    p = sub.add_parser("beats"); p.add_argument("audio"); p.add_argument("--out")
+    p = sub.add_parser("study"); p.add_argument("reference"); p.add_argument("--out")
+    p = sub.add_parser("footage"); p.add_argument("video"); p.add_argument("--out", required=True); p.add_argument("--from", dest="start", type=float, default=0.0)
+    p.add_argument("--dur", type=float); p.add_argument("--width", type=int, default=1280); p.add_argument("--fps", type=int, default=30)
+    p = sub.add_parser("channels"); p.add_argument("audio"); p.add_argument("--fps", type=int, default=30); p.add_argument("--out"); p.add_argument("--bpm", type=float)
+    p = sub.add_parser("loopcheck"); p.add_argument("film")
+    p = sub.add_parser("inspect", help="the delivery gate: yuv420p/H.264, black + frozen stretches, LUFS + true peak, exposure")
+    p.add_argument("film"); p.add_argument("--lufs", type=float, default=-14.0); p.add_argument("--allow", action="append", default=[], help="an expected hold, e.g. 6.6-7.3 (repeatable)")
+    p = sub.add_parser("montage", help="edit footage to a beat (montage.py cut): clips, music, grade, punches, ducking, captions")
+    p.add_argument("clips", nargs="+"); p.add_argument("--music", required=True); p.add_argument("--out", required=True); p.add_argument("--seconds", type=float)
+    p.add_argument("--ratio", default="9:16"); p.add_argument("--grade", default="teal_orange"); p.add_argument("--voice"); p.add_argument("--captions")
+    p.add_argument("--no-punch", action="store_true"); p.add_argument("--keep-audio", action="store_true"); p.add_argument("--style", default="reels")
+    p = sub.add_parser("mocap"); p.add_argument("video"); p.add_argument("--out", required=True); p.add_argument("--fps", type=int, default=30)
+    p.add_argument("--points", type=int, default=1200); p.add_argument("--from", dest="start", type=float, default=0.0); p.add_argument("--dur", type=float)
     a = ap.parse_args()
+    if a.cmd == "inspect":
+        import qa
+        allow = [tuple(float(x) for x in v.split("-", 1)) for v in a.allow]
+        rep = qa.inspect(Path(a.film), a.lufs, expect=allow)
+        print(json.dumps(rep, ensure_ascii=False, indent=1))
+        sys.exit(0 if rep["ok"] else 1)
+    if a.cmd == "montage":
+        import montage
+        rep = montage.cut(a.clips, Path(a.music), Path(a.out), a.seconds, a.ratio, 30, a.grade, not a.no_punch,
+                          Path(a.voice) if a.voice else None, Path(a.captions) if a.captions else None, a.keep_audio, a.style)
+        rep.pop("plan"); print(json.dumps(rep, ensure_ascii=False, indent=1))
+        return
+    if a.cmd in ("channels", "loopcheck", "mocap"):
+        import qa
+        if a.cmd == "mocap":
+            print(json.dumps(qa.mocap(Path(a.video), Path(a.out), a.fps, a.points, start=a.start, dur=a.dur), ensure_ascii=False, indent=1))
+            return
+        if a.cmd == "channels":
+            print(json.dumps(qa.channels(Path(a.audio), a.fps, Path(a.out) if a.out else None, a.bpm), ensure_ascii=False, indent=1))
+        else:
+            rep = qa.loopcheck(Path(a.film))
+            print(json.dumps(rep))
+            sys.exit(0 if rep.get("ok") else 1)
+        return
+    if a.cmd in ("lint", "sheet", "speed", "beats", "study", "footage"):
+        import qa
+        if a.cmd == "lint":
+            found = qa.lint(project_dir(a.project))
+            for f in found:
+                print(f"{f['level']:5s} {f['file']}:{f['line']}  {f['rule']}  ‹{f['text']}›")
+            errs = sum(1 for f in found if f["level"] == "error")
+            print(json.dumps({"errors": errs, "warnings": sum(1 for f in found if f["level"] == "warn")}))
+            sys.exit(1 if errs else 0)
+        if a.cmd == "sheet":
+            film_p = Path(a.film)
+            print(json.dumps(qa.sheet(film_p, Path(a.out) if a.out else film_p.parent / (film_p.stem + "_qa"), a.at), ensure_ascii=False, indent=1))
+        elif a.cmd == "speed":
+            print(json.dumps(qa.speed(Path(a.film), a.fps), ensure_ascii=False, indent=1))
+        elif a.cmd == "beats":
+            rep = qa.beats(Path(a.audio))
+            out = Path(a.out) if a.out else Path(a.audio).with_suffix(".beats.json")
+            out.write_text(json.dumps(rep, indent=1), encoding="utf-8")
+            print(json.dumps({"bpm": rep["bpm"], "beats": len(rep["beats"]), "hits": len(rep["hits"]), "file": str(out)}))
+        elif a.cmd == "study":
+            ref = Path(a.reference)
+            rep = qa.study(ref, Path(a.out) if a.out else ref.parent / (ref.stem + "_study"))
+            print(json.dumps({k: v for k, v in rep.items() if k not in ("cut_times", "sheet")}, ensure_ascii=False, indent=1))
+        elif a.cmd == "footage":
+            print(json.dumps(qa.footage(Path(a.video), Path(a.out), a.start, a.dur, a.width, a.fps), ensure_ascii=False, indent=1))
+        return
     if a.cmd == "bundle":
         bundle(a.project, a.entry, a.out)
     elif a.cmd == "new":
-        new(a.name, a.seconds, a.fps, a.size, a.title, a.three_d)
+        new(a.name, a.seconds, a.fps, a.size, a.title, a.three_d, a.canvas)
     elif a.cmd == "frames":
         frames(a.project, [float(v) for v in a.times.split(",")], Path(a.out) if a.out else None)
     elif a.cmd == "check":

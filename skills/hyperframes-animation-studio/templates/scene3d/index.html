@@ -46,7 +46,10 @@
     const seek = window.__kosifSeek;
     window.render = (t) => { window.__ready = false; seek(t); three.render(t); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); };
     window.__ready = false;
-    (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => { seek(0); three.render(0); three.render(0); window.__ready = true; });
+    // build() may return { ready: Promise } when it loads textures, models or data first: the first frame waits for it
+    Promise.all([document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve(), three.ready || Promise.resolve()])
+      .then(() => { seek(0); three.render(0); three.render(0); window.__ready = true; })
+      .catch((e) => console.error("scene failed to load", e));
   </script>
 </div>
 </body>

@@ -101,3 +101,72 @@ energy (near-still share, peak, mean, longest freeze); `ambience.py` synthesises
 - `Lensflare` works with generated textures; it hides itself when the sun pixel is occluded.
 - `mergeGeometries` from `three/examples/jsm/utils/BufferGeometryUtils.js` builds the two-tier crown.
 - Cost on Iris Xe: 1.2–2 s per 1080p frame for far shots, up to 6 s when thousands of shadowed trees fill the frame.
+
+
+### v3 lessons (koi pond: water you can see through, caustics, living things)
+- **Realism blocks** in `kit/three-kit.js`: `makeShallowWater` (sum-of-sines swell with analytic normals, ripple rings that
+  petals and fish leave, Fresnel reflection that mirrors the dark bank near the horizon and the sky above it, a GGX sun
+  glint, transmission so the bed shows through), `addCaustics(material)` (a procedural caustic network added to the direct
+  sunlight only, plus wavelength-dependent absorption with depth), `addSway` (wind on reeds/grass/leaves: bend ∝ height²),
+  `makeKoi` (lofted body, fins, seeded kohaku/sanke/showa/ogon skin, a swim bend in the vertex shader that grows toward the
+  tail and leans into turns), `makePetals` (fall with flutter, ring the water on landing, float and drift), `makePebbles`
+  (smooth water-worn stones, colour families, clumping), `makeBlades`, `makeDappledSun` (a SpotLight with a canopy cookie:
+  komorebi), `envFromGradient` (bounded sky gradient → PMREM), `cameraPath` (centripetal Catmull-Rom, never a dead stop).
+- **The black-rectangle bug:** a PMREM of the Preetham `Sky` contains the sun disk (~1e4), which overflows half-float
+  buffers; one Inf/NaN pixel is then spread by bloom into large black rectangles. Fixes now in the kit: `makePost` adds a
+  guard pass right after the render pass (NaN/Inf → 0, clamp ≤ 48), and environments come from `envFromGradient`.
+- A SpotLight with `decay = 0` behaves like a sun: intensity ≈ 3–5 (not thousands).
+- Never look straight into a low sun over water with fog: the glint, the bloom and the fog add up to a white sheet. Put
+  the sun to the side (azimuth ~90° from the view) and let the water mirror the banks.
+- Water reads as water when its near-horizon reflection is dark (the far bank), not sky-bright.
+- Caustic cells in a garden pond are 5–15 cm (`scale ≈ 5.5` in metres), not a metre.
+- Under memory pressure (≈100 MB free) the page can take 1–5 minutes to build its procedural textures: `motion.py frames`
+  now builds once and seeks every requested time; `texSize` (terrain, canopy) trims the build.
+
+### Tooling added in v3
+`motion.py lint` (determinism, contract, taste) · `motion.py sheet FILM` (contact 2 fps, phone 360 px, strip, first frame,
+review.md rubric) · `motion.py speed FILM` (optical-flow px/frame → blur or redesign) · `motion.py beats TRACK` (bpm, beats,
+downbeats, hits) · `motion.py study REF.mp4` (cuts, shot lengths, first change, energy, palette → style_guide.md) ·
+`motion.py footage CLIP` (all-intra clip a composition seeks exactly via `<video data-start>`) · `score.py` (a soundtrack
+on the beat grid: kick/clap/hats/sub/pad/pluck/lead, risers, booms, designed SFX from cues) · `ambience.py --sea 0 --drops
+--brook` (ponds and rooms) · `film.py`/`motion.py render --blur k` now blurs every page (GSAP and canvas too), centred
+shutter, float average; 3D pages keep their GPU accumulation (`window.__nativeBlur`).
+
+### v3.1 — the sound drives the picture (kloss), real motion drives bodies (aicreataro)
+- `motion.py channels TRACK` → per-frame JSON (fps, beats, downbeats, kicks, onsets, rms, bass/mid/high, onset, centroid,
+  silence, pitch_dive, pitch_rise, speed, tape) + `spectrogram.png` (magma) + `spectrum_height.png`. A tape stop is heard
+  two ways: a straight falling pitch line (r² > 0.9, > 15 st/s) or a whole-spectrum shift (> 30 st/s over 0.25 s), each
+  held ≥ 4 frames; a state machine turns that into playback speed (stopping → stopped through the dead air → spin-up),
+  and `tape` is its integral. In a page: `const C = MOTION.channels(json)` → `C.kick(t)`, `C.onset(t)`, `C.v("bass", t)`,
+  `C.tape(t)`, `C.silent(t)`.
+- Run the world on the tape clock and only the camera on the wall clock: the land, sparks and dust freeze in a stop while
+  the camera keeps orbiting them (bullet time for free). `spectrumOnTape(img, ch)` re-samples the spectrogram onto tape
+  time so the line under the camera is always what is heard.
+- `makeSpectrumGround` (spectrogram → canyon: bass river in the middle, harmonics on the walls, lit rock with a derivative
+  normal, lava only in the loudest cells, a playhead traced on the floor, fog; `half` keeps the plane edge out of frame),
+  `makeGlitchPass` (chroma · slice · negative tear · mono freeze · warp — use them as accents: a negative held for 0.4 s on a
+  dark scene becomes a grey flash; a cold monochrome reads as "time stopped"), `makeSparks` (event bursts on the tape clock).
+- A chrome hero reflects the real scene with a `CubeCamera` (256², half float; hide the hero while it renders).
+- `motion.py loopcheck FILM` proves a loop seam; `score.py` writes tape stops (`tape_stops_s`, `tape_starts_s`).
+- `motion.py mocap VIDEO --out body.json` (fixed camera: median background, difference, morphology, seeded points) →
+  `makeParticleBody(json)`; `loadModel(url)` brings a GLB with its animation sought to t; `addWave` for cloth and flags.
+- `voice.py` speaks Arabic offline (Windows OneCore: Naayf); `<audio data-role="voice">` ducks the other clips (sidechain)
+  in the mux, which then normalises to −14 LUFS.
+- Async scenes: `build()` returns `{ ready }`; the page waits for it (and fonts) before `__ready` — the scene3d template does.
+
+### v3.2 — taken from KOSIF Omni (Ultra Motion & Montage, Lighting, Vision, Aesthetics council)
+- `montage.py cut CLIPS --music TRACK` / `motion.py montage`: edit any footage to a beat — a shot plan of quick (≈1 s) and
+  breathing (≈3 s) shots with every cut on a beat and breathing shots ending on downbeats, the most active unused window of
+  each clip (frame-difference energy), fill-crop to 9:16/16:9/1:1/4:5, zoom punches on downbeats that decay like a hit
+  (2× supersampled so they do not stair-step), grades (teal_orange, golden_hour, cyberpunk, vintage_film with seeded grain,
+  matrix_tech, clean_commercial, magma_night), hard cuts, music + clip sound + voice with real sidechain ducking, −14 LUFS /
+  −1 dBTP, and karaoke captions.
+- `montage.py captions VIDEO --spec caps.json`: one ASS event per spoken word (highlight colour + a 120 ms pop), so Arabic
+  stays shaped and ordered; words get time by length; accepts `voice.py` timings; Noto Arabic fonts; safe bottom margin.
+- `motion.py inspect FILM [--allow 6.6-7.3]`: the delivery gate — yuv420p/H.264/even size, truly black stretches (not dark
+  designs; fades at the ends allowed), frozen stretches (an end hold is a warning; list designed holds), integrated LUFS and
+  true peak, blown highlights and crushed blacks on sampled frames.
+- `review.md` is now a two-reviewer P0/P1/P2 round with a fixer, plus the twelve lenses of the aesthetics council (world,
+  character, action, camera, light, colour, VFX, atmosphere, materials, production design, composition, beauty).
+- Light like a set: `lightRig(scene, { key, fillStops: 2, rimStops: 0.5, keyK: 5600, fillK: 6500, rimK: 4300 })` (a
+  2-stop fill = a 5:1 lighting ratio), `kelvin(K)`, `gel(fromK, toK)` (mired shift → CTO/CTB), `falloffStops(d1, d2)`.

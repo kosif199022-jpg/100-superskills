@@ -50,7 +50,8 @@ export function build(canvas, W, H) {
     post.grade.uniforms.uWarm.value = 0.75 * (1 - smooth(0, 5, t)) + 0.2;
   }
   const render = makeFrameLoop(renderer, post, W, H, update);
-  return { render, scene, camera, renderer };
+  const ready = Promise.resolve();                          // async loads (loadModel, textures) resolve this before frame 0
+  return { render, ready, scene, camera, renderer };
 }
 
 window.__three = { build };

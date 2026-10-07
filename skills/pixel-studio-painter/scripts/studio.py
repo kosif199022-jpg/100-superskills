@@ -372,6 +372,12 @@ class Studio:
         mo.add_separator()
         mo.add_command(label="🖼 إطار مفتاحي من مشروع… (يُرسم هنا)", command=self.motion_frame)
         mo.add_command(label="🎞 تصيير فيلم المشروع…", command=self.motion_render)
+        mo.add_separator()
+        mo.add_command(label="🧪 فحص المشروع (حتمية وعقد وذوق)…", command=self.motion_lint)
+        mo.add_command(label="🔍 لوحة نقد لفيلم (اتصال + هاتف + review.md)…", command=lambda: self.motion_film_tool("sheet"))
+        mo.add_command(label="📏 قياس السرعة بالبكسل/إطار لفيلم…", command=lambda: self.motion_film_tool("speed"))
+        mo.add_command(label="🎼 شبكة إيقاع من مقطوعة…", command=lambda: self.motion_film_tool("beats"))
+        mo.add_command(label="🎓 دراسة فيلم مرجعي (قطعات، لقطات، لوحة)…", command=lambda: self.motion_film_tool("study"))
         mo.add_command(label="📂 فتح مجلد المشاريع", command=lambda: os.startfile(str(HERE / "motion" / "projects")) if (HERE / "motion" / "projects").exists() else None)
         m.add_cascade(label="أنيميشن", menu=mo)
         h = tk.Menu(m, tearoff=0)
@@ -1034,6 +1040,29 @@ class Studio:
         self._motion("render", name, "--engine", "studio", "--blur", blur, "--out", str(out),
                      note=f"🎞 يصيّر {name} (قد يستغرق دقائق؛ الحالة هنا عند الانتهاء)...",
                      done=lambda o: self.status.set(f"✅ الفيلم جاهز: out/{out.name}"))
+
+    def motion_lint(self):
+        name = self._motion_project("فحص المشروع")
+        if name:
+            self._motion("lint", name, note=f"🧪 يفحص {name}...")
+
+    def motion_film_tool(self, cmd: str):
+        """sheet / speed / beats / study on a file the user picks; the result opens (sheet, study) or shows in the status bar."""
+        from tkinter import filedialog
+        kinds = [("صوت", "*.wav *.mp3 *.m4a *.flac")] if cmd == "beats" else [("فيديو", "*.mp4 *.mov *.webm *.mkv")]
+        path = filedialog.askopenfilename(title={"sheet": "فيلم للنقد", "speed": "فيلم لقياس السرعة", "beats": "مقطوعة موسيقية", "study": "فيلم مرجعي"}[cmd],
+                                          initialdir=str(OUT), filetypes=kinds + [("الكل", "*.*")])
+        if not path:
+            return
+        p = Path(path)
+        if cmd == "sheet":
+            out = p.parent / (p.stem + "_qa")
+            self._motion("sheet", str(p), "--out", str(out), note="🔍 يصنع لوحة النقد...", done=lambda o: self.open_image(path=str(out / "contact.png")))
+        elif cmd == "study":
+            out = p.parent / (p.stem + "_study")
+            self._motion("study", str(p), "--out", str(out), note="🎓 يدرس الفيلم المرجعي...", done=lambda o: os.startfile(str(out)))
+        else:
+            self._motion(cmd, str(p), note={"speed": "📏 يقيس السرعة بالتدفق البصري...", "beats": "🎼 يستخرج شبكة الإيقاع..."}[cmd])
 
     def show_help(self):
         from tkinter import messagebox

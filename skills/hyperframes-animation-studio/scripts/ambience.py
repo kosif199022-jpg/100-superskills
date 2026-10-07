@@ -71,18 +71,19 @@ def birdsong(n: int, t0: float, t1: float, rng, density: float = 1.0) -> np.ndar
 
 
 def synth(seconds: float, rain: list[tuple[float, float]], thunder: list[float], whoosh: list[float],
-          chords: list[tuple[float, str]], seed: int = 7, birds: list[tuple[float, float]] | None = None) -> np.ndarray:
+          chords: list[tuple[float, str]], seed: int = 7, birds: list[tuple[float, float]] | None = None, sea: float = 1.0, drops=None, brook=None) -> np.ndarray:
     n = int(seconds * SR)
     t = np.arange(n) / SR
     rng = np.random.default_rng(seed)
     out = np.zeros((n, 2))
     for t0, t1 in (birds or []):
         out += birdsong(n, t0, t1, rng)
+    sea_level = sea
     for ch in range(2):
         noise = rng.standard_normal(n)
         # sea: low rumble with a slow swell
         sea = _lowpass_fast(noise, 320) * (0.55 + 0.45 * np.sin(2 * math.pi * 0.11 * t + ch * 0.9))
-        sea = sea / (np.abs(sea).max() + 1e-9) * 0.22
+        sea = sea / (np.abs(sea).max() + 1e-9) * 0.22 * sea_level
         # wind: a breathing band of air
         wind = _highpass(_lowpass_fast(noise, 1400), 300) * (0.4 + 0.6 * (0.5 + 0.5 * np.sin(2 * math.pi * 0.07 * t + 1.3 + ch)))
         wind = wind / (np.abs(wind).max() + 1e-9) * 0.07
@@ -133,6 +134,26 @@ def synth(seconds: float, rain: list[tuple[float, float]], thunder: list[float],
         w = w / (np.abs(w).max() + 1e-9) * env * 0.25
         out[i0:i0 + m, 0] += w
         out[i0:i0 + m, 1] += w
+    # water plinks: a droplet is a small bubble ringing as it closes — a sine whose pitch rises fast and dies in ~60 ms
+    def plink(f0, amp):
+        m = int(0.12 * SR); tt = np.arange(m) / SR
+        f = f0 * (1 + 0.9 * (1 - np.exp(-tt / 0.012)))
+        return np.sin(2 * math.pi * np.cumsum(f) / SR) * np.exp(-tt / 0.045) * amp
+    for t0 in (drops or []):
+        i0 = int(t0 * SR)
+        if i0 >= n:
+            continue
+        d = plink(900 + rng.random() * 900, 0.16 + rng.random() * 0.1)[: n - i0]
+        pan = rng.random()
+        out[i0:i0 + len(d), 0] += d * (1 - pan * 0.6); out[i0:i0 + len(d), 1] += d * (0.4 + pan * 0.6)
+    for t0, t1 in (brook or []):                         # a trickle: soft band noise and many small plinks
+        e = _env(n, t0, t1, fade=1.0)
+        b = _highpass(_lowpass_fast(rng.standard_normal(n), 2600), 500) * e
+        out[:, 0] += b / (np.abs(b).max() + 1e-9) * 0.05; out[:, 1] += np.roll(b, 523) / (np.abs(b).max() + 1e-9) * 0.05
+        for _ in range(int((t1 - t0) * 14)):
+            i0 = int((t0 + rng.random() * (t1 - t0)) * SR)
+            d = plink(1300 + rng.random() * 1800, 0.05 + rng.random() * 0.05)[: max(0, n - i0)]
+            ch = int(rng.random() * 2); out[i0:i0 + len(d), ch] += d
     # final: gentle tail fade and normalisation
     out *= _env(n, 0, seconds, fade=0.4)[:, None]
     out = out / (np.abs(out).max() + 1e-9) * 0.85
@@ -162,10 +183,14 @@ def main():
     ap.add_argument("--chords", default="0:A", help="t:NOTE[,t:NOTE]")
     ap.add_argument("--birds", default="", help="t0:t1[,t0:t1] dawn birdsong")
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--sea", type=float, default=1.0, help="sea swell level (0 for a pond or a room)")
+    ap.add_argument("--drops", default="", help="t[,t] single water plinks (a petal landing, a fish rising)")
+    ap.add_argument("--brook", default="", help="t0:t1[,t0:t1] a trickle of water")
     a = ap.parse_args()
     chords = [(float(p.split(":")[0]), p.split(":")[1]) for p in a.chords.split(",") if p]
     data = synth(a.seconds, _pairs(a.rain), [float(v) for v in a.thunder.split(",") if v],
-                 [float(v) for v in a.whoosh.split(",") if v], chords, a.seed, _pairs(a.birds))
+                 [float(v) for v in a.whoosh.split(",") if v], chords, a.seed, _pairs(a.birds), a.sea,
+                 [float(v) for v in a.drops.split(",") if v], _pairs(a.brook))
     write_wav(a.out, data)
     print(a.out, f"{a.seconds}s stereo {SR} Hz")
 

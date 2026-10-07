@@ -8,6 +8,7 @@ Idea from HyperFrames (heygen-com/hyperframes): deterministic frames from a seek
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import shutil
 import subprocess
@@ -137,34 +138,71 @@ def film_drawing(source: str, out: Path, fps: int = 30, speed: str = "normal", h
     return {"file": str(out), "frames": enc.n, "fps": fps, "seconds": round(enc.n / fps, 1), "encode_s": round(time.perf_counter() - t, 1)}
 
 
+SEEK_JS = """t => { window.__ready = false;
+  if (window.render) { window.render(t); }
+  else if (window.seek) { window.seek(t); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); }
+  else { window.__ready = true; } }"""
+
+
 def film_animate(source: str, out: Path, fps: int = 30, seconds: float | None = None, size=(1280, 720), blur: int = 1,
-                 shutter: float = 0.5) -> dict:
-    """blur = sub-frames per output frame for pages that implement it (window.__blur / __shutter / __fps): a real
-    shutter smear, k times the render cost."""
+                 shutter: float = 0.5, start: float = 0.0, frames_dir: Path | None = None) -> dict:
+    """Frames of a seekable page through FFmpeg. blur = sub-frames per output frame: a real shutter, k times the cost.
+    Pages that accumulate on the GPU themselves set window.__nativeBlur (the three-kit's makeFrameLoop does, reading
+    window.__blur / __shutter / __fps); for every other page (GSAP compositions, canvas seek(t) films) the samples are
+    taken here, centred on the frame's time, averaged in float and quantised once — the way film cameras smear motion.
+    A page may expose window.render(t) (KOSIF / HyperFrames shim) or window.seek(t) (the canvas route)."""
     src = Path(source)
     t0 = time.perf_counter()
     if src.suffix.lower() in (".html", ".htm"):
+        import io
         import html_render
         from playwright.sync_api import sync_playwright
         w, h = size
         with sync_playwright() as p:
             browser = p.chromium.launch(executable_path=html_render.browser_path(), headless=True, args=html_render.GPU_FLAGS[2:])
             pg = browser.new_context(viewport={"width": w, "height": h}).new_page()
-            pg.goto(src.resolve().as_uri(), wait_until="load", timeout=120000)
-            pg.wait_for_function("window.__ready === true", timeout=120000)
-            pg.evaluate("([k, s, f]) => { window.__blur = k; window.__shutter = s; window.__fps = f; }", [int(blur), float(shutter), int(fps)])
+            budget = float(os.environ.get("KOSIF_PAGE_TIMEOUT", "600")) * 1000     # procedural 3D scenes build slowly on a busy machine
+            pg.goto(src.resolve().as_uri(), wait_until="load", timeout=budget)
+            # pages with the kit's shim report readiness (fonts, footage); bare canvas pages only define seek(t)
+            pg.wait_for_function("window.__ready === true || (typeof window.seek === 'function' && typeof window.render !== 'function')", timeout=budget)
+            native = bool(pg.evaluate("!!window.__nativeBlur"))
+            k = max(1, int(blur))
+            pg.evaluate("([k, s, f]) => { window.__blur = k; window.__shutter = s; window.__fps = f; }", [k if native else 1, float(shutter), int(fps)])
             dur = seconds or pg.evaluate("window.__duration || 4")
             enc = Encoder(out, w, h, fps)
-            n = int(dur * fps)
+            if frames_dir:
+                frames_dir.mkdir(parents=True, exist_ok=True)
+            n = int(round(dur * fps))
+
+            def shot(t: float) -> np.ndarray:
+                # a busy machine (or a <video> still decoding) can stall the compositor past one screenshot timeout;
+                # seek again and retry instead of losing the whole render
+                for attempt in range(4):
+                    try:
+                        pg.evaluate(SEEK_JS, max(0.0, t))
+                        pg.wait_for_function("window.__ready === true", timeout=180000)
+                        return np.asarray(Image.open(io.BytesIO(pg.screenshot(type="png", timeout=90000))).convert("RGB"))
+                    except Exception as e:                    # noqa: BLE001 — playwright TimeoutError and friends
+                        if attempt == 3:
+                            raise
+                        print(f"frame t={t:.3f}: {type(e).__name__}, retry {attempt + 1}", file=sys.stderr, flush=True)
+                        pg.wait_for_timeout(1500 * (attempt + 1))
             for i in range(n):
-                pg.evaluate("t => { window.__ready = false; window.render(t); }", i / fps)
-                pg.wait_for_function("window.__ready === true", timeout=60000)
-                png = pg.screenshot(type="png")
-                import io
-                enc.frame(np.asarray(Image.open(io.BytesIO(png)).convert("RGB")))
+                t = start + i / fps
+                if native or k == 1:
+                    rgb = shot(t)
+                else:                                              # centred shutter: samples at t + s/fps·((j+.5)/k − .5)
+                    acc = np.zeros((h, w, 3), np.float32)
+                    for j in range(k):
+                        acc += shot(t + shutter / fps * ((j + 0.5) / k - 0.5))
+                    rgb = np.clip(acc / k + 0.5, 0, 255).astype(np.uint8)
+                enc.frame(rgb)
+                if frames_dir:
+                    Image.fromarray(rgb).save(frames_dir / f"f{i:05d}.jpg", quality=92)
             enc.close()
             browser.close()
-        return {"file": str(out), "frames": n, "fps": fps, "seconds": dur, "encode_s": round(time.perf_counter() - t0, 1)}
+        return {"file": str(out), "frames": n, "fps": fps, "seconds": dur, "blur": k, "native_blur": native,
+                "encode_s": round(time.perf_counter() - t0, 1)}
     import importlib
     mod = importlib.import_module(src.stem)
     if not hasattr(mod, "build_t"):
