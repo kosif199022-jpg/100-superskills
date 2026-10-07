@@ -543,6 +543,54 @@ class LocalEditAndAi(unittest.TestCase):
         self.assertTrue((self.tmp / "tiny.mp4").exists() and (self.tmp / "tiny.mp4").stat().st_size > 500, info)
 
 
+class Motion(unittest.TestCase):
+    """KOSIF Motion: a project from the template, the kit's contract, the ambience synth, the measure."""
+
+    def test_new_project_has_the_hyperframes_contract_and_the_kit(self):
+        sys.path.insert(0, str(HERE / "motion"))
+        import motion
+        tmp = Path(tempfile.mkdtemp())
+        old = motion.PROJECTS
+        motion.PROJECTS = tmp
+        try:
+            d = motion.new("demo", 5, 30, "1280x720", "تجربة")
+            html = (d / "index.html").read_text(encoding="utf-8")
+            for part in ('data-composition-id="root"', 'data-width="1280"', 'data-duration="5"', 'window.__timelines["root"] = tl',
+                         '.shim("root", 5)', "assets/motion-kit.js"):
+                self.assertIn(part, html)
+            self.assertNotIn('<html lang="ar" dir', html)                      # dir=rtl on <html> breaks HyperFrames renders
+            self.assertTrue((d / "assets" / "motion-kit.js").exists())
+            self.assertEqual(motion.duration_of(d / "index.html"), 5.0)
+        finally:
+            motion.PROJECTS = old
+            shutil.rmtree(tmp, ignore_errors=True)
+        kit = (HERE / "motion" / "kit" / "motion-kit.js").read_text(encoding="utf-8")
+        for name in ("revealWords", "drawPath", "rain", "vapour", "camera", "grain", "vignette", "shim", "register"):
+            self.assertIn(name, kit)
+        self.assertNotIn("Math.random", kit)                                   # seeded only
+
+    def test_ambience_is_deterministic_stereo_audio(self):
+        sys.path.insert(0, str(HERE / "motion"))
+        import ambience
+        a = ambience.synth(2.0, [(0.5, 1.5)], [0.8], [0.2], [(0, "A"), (1, "F")], seed=3)
+        b = ambience.synth(2.0, [(0.5, 1.5)], [0.8], [0.2], [(0, "A"), (1, "F")], seed=3)
+        self.assertEqual(a.shape, (2 * ambience.SR, 2))
+        self.assertTrue(np.array_equal(a, b))
+        self.assertLessEqual(float(np.abs(a).max()), 0.86)
+        tmp = Path(tempfile.mkdtemp())
+        ambience.write_wav(tmp / "a.wav", a)
+        self.assertGreater((tmp / "a.wav").stat().st_size, 100000)
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_water_cycle_composition_passes_the_static_rules(self):
+        html = (HERE / "motion" / "projects" / "water_cycle" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('window.__timelines["root"] = tl', html)
+        self.assertIn('<audio id="ambience"', html)
+        self.assertNotIn('dir="rtl"', html.split("<body>")[0].split("<style>")[0])
+        self.assertNotIn("marker-end", html)
+        self.assertNotIn("Math.random", html)
+
+
 class Studio(unittest.TestCase):
     def test_scenes_and_loading(self):
         self.assertIn("dragon_girl", studio.scenes())

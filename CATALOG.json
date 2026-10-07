@@ -6211,5 +6211,62 @@
     "path": "1094-akbun-draw/2417-akbun-draw-cartoon-b/SKILL.md"
    }
   ]
+ },
+ {
+  "n": "110",
+  "slug": "hyperframes-animation-studio",
+  "ar": "استوديو الأنيميشن الاحترافي (HyperFrames + KOSIF Motion)",
+  "en": "HyperFrames Animation Studio",
+  "desc": "أنيميشن احترافي بمدة محددة من طلب واحد: تركيب HTML واحد (صيغة HyperFrames: data-composition-id/width/height/duration، وخطوط GSAP الزمنية في window.__timelines بالثواني) مع عدّة KOSIF Motion (نص عربي بأقنعة كلمات، قلم يرسم المسارات، مطر وبخار وبريق بعشوائية مبذورة، كاميرا واحدة تتحرك ككتلة، وميض، حبيبات فيلم وفينييت) وصوت محيط مركّب بـ numpy؛ يُصيَّر حتمياً إطاراً بإطار بـ HyperFrames (Puppeteer + FFmpeg) أو بمصيّر KOSIF Studio (Playwright/Edge) من الملف نفسه، ويمرّ ببوابة الثماني ثوانٍ (إطارات مفتاحية تُفحص بالعين)، وفحص HyperFrames (lint + تشغيل + تباين)، وقياس طاقة الحركة؛ مبني على دليل 500 أداة لإنتاج الفيديو حول HyperFrames.",
+  "sources": [
+   {
+    "name": "gsap",
+    "plugin": "2702-hyperframes",
+    "license": "Apache-2.0",
+    "path": "2702-hyperframes/10377-gsap/SKILL.md"
+   },
+   {
+    "name": "hyperframes",
+    "plugin": "2702-hyperframes",
+    "license": "Apache-2.0",
+    "path": "2702-hyperframes/10378-hyperframes/SKILL.md"
+   },
+   {
+    "name": "the-puppeteer-docs",
+    "plugin": "3252-the-puppeteer",
+    "license": "MIT",
+    "path": "3252-the-puppeteer/13690-the-puppeteer-docs/SKILL.md"
+   },
+   {
+    "name": "kinetic-inflated-hero",
+    "plugin": "100-ui-motion",
+    "license": "MIT",
+    "path": "100-ui-motion/209-kinetic-inflated-hero/SKILL.md"
+   },
+   {
+    "name": "explainer",
+    "plugin": "1068-bullpen",
+    "license": "MIT",
+    "path": "1068-bullpen/2367-explainer/SKILL.md"
+   },
+   {
+    "name": "ffmpeg",
+    "plugin": "235-mas-video-lab",
+    "license": "MIT",
+    "path": "235-mas-video-lab/754-ffmpeg/SKILL.md"
+   },
+   {
+    "name": "9574-pr-explainer",
+    "plugin": "2471-review",
+    "license": "MIT",
+    "path": "2471-review/9574-pr-explainer/SKILL.md"
+   },
+   {
+    "name": "ffmpeg",
+    "plugin": "2759-charly-selkies",
+    "license": "MIT",
+    "path": "2759-charly-selkies/10885-ffmpeg/SKILL.md"
+   }
+  ]
  }
 ]

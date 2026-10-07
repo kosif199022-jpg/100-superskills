@@ -122,3 +122,13 @@
 edit_pack.local_edit يجد الطبقة الأقرب للون أ ويكتب recolor إلى ب مع حفظ الظلال. ما يحتاج فهم الأشياء («القميص»)
 يذهب إلى الذكاء الاصطناعي مع وصف الصورة. ↩ يرجع إلى الصورة السابقة، و🎬 يصنع فيلم الرسم، والإعدادات في settings.json.
 عند الكتابة لهذا الاستوديو: أعد البرنامج كاملاً، والكود داخل كتلة ``` واحدة؛ الاستوديو يستخرجها من ردّك.
+
+## 9) الأنيميشن الاحترافي (motion/: HyperFrames + GSAP + عدّة KOSIF Motion)
+
+طلب «أنيميشن N ثوانٍ عن X» يصير تركيب HTML واحداً بصيغة HyperFrames: جذر `data-composition-id="root"` بأبعاده ومدته،
+خط GSAP واحد مُوقَف بالثواني مسجّل حرفياً في `window.__timelines["root"]`، و`MOTION.shim("root", N)` ليعمل الملف أيضاً
+بمصيّر الاستوديو. الطريقة: قائمة مشاهد بأزمنتها (جسم حامل، 2–3 حركات كاميرا)، ثم `motion.py new`، ثم الكتابة بأدوات
+العدّة (revealWords/hideWords للعربية، drawPath مع head، rain/vapour/sparkle ببذرة، camera، flash، grain، vignette)،
+ثم `frames` ولوحة بالعين (بوابة الثماني ثوانٍ)، ثم `check` (صفر ✗)، ثم `render`، ثم `measure`. ممنوع: `dir="rtl"` على
+`<html>`، صوت بلا `id`، خطوط بلا `@font-face`، `Math.random`، `setTimeout`، `marker-end`، وحالة from مرئية في `fromTo`.
+الصوت من `ambience.py` بالثواني نفسها. المرجع الكامل: `motion/references/hyperframes-authoring.md`.

@@ -1,6 +1,6 @@
 # KOSIF Studio: drawing pixel by pixel (skill 109 guide)
 
-Everything below runs from this skill's `scripts/` folder: `cd scripts` first.
+Everything below runs from this skill's `scripts/` folder: `cd scripts` first. The motion studio described below is skill 110 (`hyperframes-animation-studio`).
 
 KOSIF Studio is a desktop drawing program. You give it a picture as **an image**, as **code from any AI**, as **a
 description**, or as **a change to a picture it already drew**, and it draws that picture in front of you one pixel
@@ -129,6 +129,29 @@ browser's renderer, and HTML exports at any size. `scenes/whale_dragon_3d.html` 
 an MP4 with FFmpeg; `film.py animate page.html` seeks `render(t)` frame by frame (a scene file can define
 `build_t(t)` instead).
 
+## 🎬 KOSIF Motion: professional animation (HyperFrames + GSAP)
+
+`motion/` turns a request like "a 5-second animation about X" into a deterministic MP4. A film is **one HTML
+composition** in [HyperFrames](https://github.com/heygen-com/hyperframes) format (`data-composition-id`,
+`data-width/height/duration`, GSAP timelines registered on `window.__timelines`, seconds everywhere) written with
+`motion/kit/motion-kit.js`: Arabic-safe word masks, pen-drawn paths with landing arrowheads, flowing dashes, seeded
+rain / vapour / sparkle, one camera that moves the whole stage, flash, film grain and vignette, four easings
+(slam / snap / drive / settle). The same file renders through HyperFrames' CLI (Puppeteer + FFmpeg, installed with
+`npm install hyperframes gsap` in `motion/`) or through the studio's own renderer (`window.render(t)`).
+
+```bash
+python motion/motion.py new rocket --seconds 6 --title "الانطلاق"      # a project from the template
+python motion/motion.py frames rocket --times 1,3,5                     # key frames: the 8-second gate
+python motion/motion.py check rocket                                    # HyperFrames lint + runtime + contrast
+python motion/motion.py render rocket --out out/rocket.mp4              # 1080p30, "looks" quality
+python motion/motion.py measure out/rocket.mp4                          # motion energy report
+python motion/ambience.py out.wav --seconds 6 --whoosh 0.5 --chords 0:A # a deterministic soundtrack
+```
+
+`motion/projects/water_cycle/` is the showcase: 17 s, five scenes (dawn, evaporation, condensation, precipitation,
+collection, the loop), synthesised ambience, checked and rendered by HyperFrames. `motion/references/` holds the
+authoring contract as the checker enforces it and a distilled 500-tool catalog.
+
 ## Realism: primitives, a guide and a measured gate
 
 `render.py` has `shade` (form shading toward a light), `noise` (fractal texture: skin, rock, water, clouds),
@@ -182,6 +205,7 @@ matplotlib code; Playwright or Edge for HTML; FFmpeg for films; Claude Code or a
 | `to_python.py` | Image → standalone Pillow program (polygons + embedded original), identical output |
 | `html_render.py` | HTML/Three.js page → PNG in headless Edge (Playwright or Edge's own screenshot) |
 | `film.py` | Drawing films (scenes, code, images) and animations to MP4 via FFmpeg |
+| `motion/` | KOSIF Motion: `motion.py` (new / frames / check / render / measure), `kit/motion-kit.js`, `ambience.py`, templates, references, `projects/water_cycle` |
 | `judge.py` | Realism gate: measured flat fills, hard edges, colours, tonal range; calibrated thresholds; Jev reads the numbers |
 | `jev_client.py` | Jev, the fast judge: asked twice with the options reversed, averaged; a rule when unreachable |
 | `vectorize.py` | Image → vector colour layers (+ SVG). Logos: true colours with exact edges. Photos: 24 colours |

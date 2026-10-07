@@ -40,7 +40,7 @@ HANDWRITTEN_REFS = ("motion-rules.md", "styles.md", "formula.md", "blindspot-que
                     "color-grading-order.md", "resolve-api-map.md", "reasoning-patterns.md", "structured-output-ladder.md",
                     "model-guidance.md", "judge-design.md", "film-brief-template.md", "motion-floor.md",
                     "captions-rules.md", "model-conventions.md", "driver-trees.md", "power-query-recipes.md",
-                    "dax-patterns.md", "lambda-catalog.md", "formula-translation.md", "studio-guide.md", "drawing-guide.md")
+                    "dax-patterns.md", "lambda-catalog.md", "formula-translation.md", "studio-guide.md", "drawing-guide.md", "hyperframes-authoring.md", "tools-catalog.md")
 
 sys.path.insert(0, str(TOOLS))
 from data_a import A  # noqa: E402
@@ -49,8 +49,9 @@ from data_c import C  # noqa: E402
 from data_d import D  # noqa: E402
 from data_e import E  # noqa: E402
 from data_f import F  # noqa: E402
+from data_g import G  # noqa: E402
 
-ALL = A + B + C + D + E + F
+ALL = A + B + C + D + E + F + G
 assert len(ALL) >= 100, f"expected >= 100 skills, got {len(ALL)}"
 assert len({s["slug"] for s in ALL}) == len(ALL), "duplicate slug"
 
@@ -62,7 +63,8 @@ CATEGORIES = [
     ("تصميم المواقع والبرمجة", "Web Design & Programming", range(51, 76)),
     ("الكتابة والصوت والأعمال والتعليم والقرار", "Writing, Audio, Business, Learning & Decisions", range(76, 101)),
     ("الدفعة المتقدمة جداً: مونتاج وبرومبت وأنيميشن وإكسل (من قراءة المحتوى الكامل للأطلس)", "Ultra-Advanced: Editing, Prompts, Motion & Excel", range(101, 109)),
-    ("الرسم بالبيكسل: كود أي ذكاء اصطناعي، وصور تُعاد مطابقة للأصل، ومشاهد متجهة", "Pixel Drawing Studio", range(109, 200)),
+    ("الرسم بالبيكسل: كود أي ذكاء اصطناعي، وصور تُعاد مطابقة للأصل، ومشاهد متجهة", "Pixel Drawing Studio", range(109, 110)),
+    ("الأنيميشن الاحترافي: HyperFrames + GSAP + عدّة KOSIF Motion، من الطلب إلى MP4 حتمي", "HyperFrames Animation Studio", range(110, 200)),
 ]
 
 

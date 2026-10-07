@@ -1,0 +1,9 @@
+{
+  "name": "kosif-motion",
+  "private": true,
+  "description": "KOSIF Motion: HyperFrames + GSAP for the hyperframes-animation-studio skill. Run: npm install",
+  "dependencies": {
+    "gsap": "^3.14.0",
+    "hyperframes": "^0.8.139"
+  }
+}
