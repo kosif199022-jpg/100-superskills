@@ -90,3 +90,14 @@ energy (near-still share, peak, mean, longest freeze); `ambience.py` synthesises
   ~1.0–1.5 s per 1080p frame including the screenshot (≈ 10 min for 17 s at 30 fps).
 - HyperFrames' own runtime drives GSAP/CSS, not a custom WebGL render loop; render 3D compositions with the studio
   engine (`motion.py render --engine studio`), which also muxes the `<audio>` clips.
+
+### v2 lessons (forest, detail maps, god rays, lens flare)
+- Detail that sells realism at film distances: a dense terrain mesh (560²) + tiled procedural albedo/normal maps
+  (`CanvasTexture`, repeat 60–90), and an `InstancedMesh` forest (~20k two-tier conifers, seeded placement by height,
+  slope and a clumping noise, `setColorAt` for per-tree colour, `castShadow` on the instanced mesh).
+- Screen-space god rays must use a short stride (≈0.55 of the sun distance over 64 samples) with a per-pixel dither
+  and a mask that keeps them above the sun's screen height — a long stride copies the sun glitter into a lattice
+  across the water.
+- `Lensflare` works with generated textures; it hides itself when the sun pixel is occluded.
+- `mergeGeometries` from `three/examples/jsm/utils/BufferGeometryUtils.js` builds the two-tier crown.
+- Cost on Iris Xe: 1.2–2 s per 1080p frame for far shots, up to 6 s when thousands of shadowed trees fill the frame.
