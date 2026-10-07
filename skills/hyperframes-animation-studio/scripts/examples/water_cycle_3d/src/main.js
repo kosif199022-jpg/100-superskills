@@ -424,9 +424,40 @@ export function build(canvas, W, H) {
     film.uniforms.time.value = t;
     state.t = t;
   }
+  /* motion blur: k sub-frames inside the shutter window, accumulated on the GPU and averaged (a real shutter smear;
+     grain is kept fixed per output frame). window.__blur = k (1 = off), window.__shutter = fraction of the frame (0.5),
+     window.__fps = the film's frame rate. */
+  const accRT = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, depthBuffer: false, stencilBuffer: false });
+  const quadScene = new THREE.Scene(), quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const accMat = new THREE.ShaderMaterial({
+    uniforms: { tex: { value: null }, w: { value: 1 } }, depthTest: false, depthWrite: false, transparent: true, blending: THREE.CustomBlending,
+    blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, blendEquation: THREE.AddEquation,
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+    fragmentShader: `uniform sampler2D tex; uniform float w; varying vec2 vUv; void main(){ gl_FragColor = vec4(texture2D(tex, vUv).rgb * w, 1.0); }` });
+  const copyMat = new THREE.ShaderMaterial({
+    uniforms: { tex: { value: null } }, depthTest: false, depthWrite: false,
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+    fragmentShader: `uniform sampler2D tex; varying vec2 vUv; void main(){ gl_FragColor = vec4(texture2D(tex, vUv).rgb, 1.0); }` });
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), accMat);
+  quadScene.add(quad);
   function render(t) {
-    update(t);
-    composer.render(0);
+    const k = Math.max(1, Math.floor(window.__blur || 1));
+    if (k === 1) { update(t); composer.renderToScreen = true; composer.render(0); return; }
+    const fps = window.__fps || 30, shutter = window.__shutter == null ? 0.5 : window.__shutter;
+    composer.renderToScreen = false;
+    const oldClear = renderer.autoClear;
+    renderer.setRenderTarget(accRT); renderer.setClearColor(0x000000, 1); renderer.clear(); renderer.setRenderTarget(null);
+    for (let i = 0; i < k; i++) {
+      const ts = t - (shutter / fps) * (i / k);
+      update(Math.max(0, ts));
+      film.uniforms.time.value = t;                          // grain belongs to the output frame, not the sub-frame
+      composer.render(0);
+      quad.material = accMat; accMat.uniforms.tex.value = composer.readBuffer.texture; accMat.uniforms.w.value = 1 / k;
+      renderer.setRenderTarget(accRT); renderer.autoClear = false; renderer.render(quadScene, quadCam); renderer.autoClear = oldClear;
+      renderer.setRenderTarget(null);
+    }
+    quad.material = copyMat; copyMat.uniforms.tex.value = accRT.texture;
+    renderer.setRenderTarget(null); renderer.render(quadScene, quadCam);
   }
   return { render, scene, camera, renderer, state };
 }

@@ -137,7 +137,10 @@ def film_drawing(source: str, out: Path, fps: int = 30, speed: str = "normal", h
     return {"file": str(out), "frames": enc.n, "fps": fps, "seconds": round(enc.n / fps, 1), "encode_s": round(time.perf_counter() - t, 1)}
 
 
-def film_animate(source: str, out: Path, fps: int = 30, seconds: float | None = None, size=(1280, 720)) -> dict:
+def film_animate(source: str, out: Path, fps: int = 30, seconds: float | None = None, size=(1280, 720), blur: int = 1,
+                 shutter: float = 0.5) -> dict:
+    """blur = sub-frames per output frame for pages that implement it (window.__blur / __shutter / __fps): a real
+    shutter smear, k times the render cost."""
     src = Path(source)
     t0 = time.perf_counter()
     if src.suffix.lower() in (".html", ".htm"):
@@ -149,6 +152,7 @@ def film_animate(source: str, out: Path, fps: int = 30, seconds: float | None = 
             pg = browser.new_context(viewport={"width": w, "height": h}).new_page()
             pg.goto(src.resolve().as_uri(), wait_until="load", timeout=120000)
             pg.wait_for_function("window.__ready === true", timeout=120000)
+            pg.evaluate("([k, s, f]) => { window.__blur = k; window.__shutter = s; window.__fps = f; }", [int(blur), float(shutter), int(fps)])
             dur = seconds or pg.evaluate("window.__duration || 4")
             enc = Encoder(out, w, h, fps)
             n = int(dur * fps)

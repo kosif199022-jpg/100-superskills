@@ -24,16 +24,21 @@ metadata:
 4. python scripts/motion.py new NAME --seconds N --fps 30 --size 1920x1080 --title «…» يُنشئ projects/NAME/index.html من القالب مع assets/motion-kit.js وassets/gsap.min.js (بعد npm install hyperframes gsap في scripts/).
 5. اكتب التركيب: كل حركة على خط GSAP واحد مُوقَف (paused) بالثواني (المعامل الثالث موضع مطلق)؛ سجّل window.__timelines['root'] = tl حرفياً؛ MOTION.shim('root', N) ليعمل الملف أيضاً بمصيّر الاستوديو. الأدوات: revealWords/hideWords (أقنعة كلمات صالحة للعربية)، drawPath (مع رأس سهم يهبط عند الوصول) وflowDash، rain/vapour/sparkle ببذرة، camera (المسرح كتلة واحدة)، flash، grain، vignette. أربع تمهيدات فقط: slam/snap/drive/settle.
 6. ممنوعات يثبتها فاحص HyperFrames: dir=rtl على <html> (فيديو أسود صامت) — direction: rtl على عناصر النص فقط؛ <audio> بلا id صامت؛ أسماء خطوط بلا @font-face؛ Math.random وsetTimeout وrequestAnimationFrame للحالة؛ fromTo بحالة from مرئية لعنصر يجب أن يبقى مخفياً؛ marker-end للأسهم.
-7. الصوت: python scripts/ambience.py assets/ambience.wav --seconds N --rain t0:t1 --thunder t --whoosh t1,t2 --chords 0:A,6:F — صوت محيط حتمي (بحر، ريح، وسادة أوتار، مطر، رعد، ووش) مُفتاح إلى الثواني نفسها؛ يُدرج <audio id=… data-start data-duration data-volume>.
+7. الصوت (بديل حين لا تسجيل مرخّصاً): python scripts/ambience.py assets/ambience.wav --seconds N --rain t0:t1 --thunder t --whoosh t1,t2 --chords 0:A,6:F — صوت محيط حتمي (بحر، ريح، وسادة أوتار، مطر، رعد، ووش) مُفتاح إلى الثواني نفسها؛ يُدرج <audio id=… data-start data-duration data-volume>.
 8. بوابة الثماني ثوانٍ: python scripts/motion.py frames NAME --times 1,4,7,… يرسم إطارات مفتاحية؛ اصنع لوحة واحدة وافحصها بالعين: أسهم شاردة، حواف المسرح عند تحريك الكاميرا، تداخل النصوص، نص يتجاوز قناعه، تباين النص على الخلفية؛ أصلح ثم أعد.
 9. python scripts/motion.py check NAME = npx hyperframes check: صفر ✗ قبل التصيير (lint + تشغيل في Chrome الخفي + تخطيط + تباين WCAG).
 10. python scripts/motion.py render NAME --engine auto --quality looks --fps 30 --out out/NAME.mp4: HyperFrames إن كان مثبتاً (عامل واحد ووضع الذاكرة المنخفضة على 8 GB)، وإلا مصيّر الاستوديو (film.py animate). --resolution 4k لرفع DPR بلا تغيير التركيب.
-11. القياس: python scripts/motion.py measure out/NAME.mp4 — حصة الإطارات شبه الساكنة، الذروة، المتوسط، أطول تجميد؛ الأرضية: سكون قليل، لا قفزة واحدة ضخمة، شيء يتحرك دائماً (أرقام المرجع في 105/motion_energy.py إن وُجد مرجع).
-12. التسليم بإيصال أدلة: الاتجاه المختار والتنفيذ، الإطارات المصيَّرة فعلاً، ما اختُبر، وما لم يُختبر أو ما عطّل؛ لا توحِ باختبار أو مراجعة لم تحدث. MP4 + index.html المصدر + لوحة الإطارات + تقرير القياس + المحرّك والمدة والحجم.
+11. الحركة لها كتلة: نوابض MOTION.spring (snappy/default/heavy/playful) لا منحنيات جاهزة للحركة المكانية، MOTION.track لقيمة تتغيّر هدفها مراراً، MOTION.zoomTrack للزوم اللوغاريتمي، MOTION.beats(bpm) ليقرأ الصورة والصوت ساعة واحدة؛ جداول المدد والتدرّج والتجاوز وقواعد الثلث في references/motion-craft.md.
+12. ضبابية الحركة الحقيقية للمشاهد ثلاثية الأبعاد: --blur 4 يراكم أربعة إطارات فرعية على GPU (الحبيبات ثابتة للإطار؛ الأرقام تبقى حادة)؛ للتسليم النهائي فقط.
+13. القياس: python scripts/motion.py measure out/NAME.mp4 — حصة الإطارات شبه الساكنة، الذروة، المتوسط، أطول تجميد؛ الأرضية: سكون قليل، لا قفزة واحدة ضخمة، شيء يتحرك دائماً (أرقام المرجع في 105/motion_energy.py إن وُجد مرجع).
+14. حلقة النقد (Motion Director): انظر إلى إطاراتك (لوحة اتصال + عرض هاتف + الإطار الأول)، قيّم 1–10 على ثمانية معايير (الخطّاف، المقروئية، جودة الحركة، التنوّع، التكوين، الصدق، تزامن الصوت، الهوية)، أصلح أسوأ ثلاث مشكلات بزمنها والنتيجة المطلوبة، أعد الفحص والتصيير، ثلاث جولات على الأقل، واختم بـ «ما كنت سأغيّره بعد».
+15. التسليم بإيصال أدلة: الاتجاه المختار والتنفيذ، الإطارات المصيَّرة فعلاً، ما اختُبر، وما لم يُختبر أو ما عطّل؛ لا توحِ باختبار أو مراجعة لم تحدث. MP4 + index.html المصدر + لوحة الإطارات + تقرير القياس + المحرّك والمدة والحجم.
 
 ## بوابات الجودة (لا تسليم قبل المرور)
 
 - قائمة المشاهد بأزمنتها قبل أي كود، والمدة المطلوبة تساوي data-duration بالضبط.
+- لا تمهيد خطي على حركة مكانية؛ الدخول أطول من الخروج؛ مجموع التدرّج < 500 مللي ثانية؛ لا شيء يتلاشى دخولاً ولا انتقال بتلاشٍ متقاطع بين المشاهد.
+- الصوت مطبّع إلى −14 LUFS بذروة −1 dB، والتسجيل الحقيقي مقدَّم على الصوت المركّب ويُصرَّح بالبديل.
 - فحص HyperFrames يمرّ بصفر أخطاء، أو يُذكر صراحةً أن التصيير تم بمصيّر الاستوديو مع سبب.
 - لوحة إطارات مفتاحية فُحصت بالعين قبل التصيير الكامل.
 - لا عشوائية غير مبذورة ولا ساعة جهاز: الإطار نفسه يُعاد إنتاجه من الزمن نفسه.
@@ -60,6 +65,10 @@ metadata:
 
 - `references/hyperframes-authoring.md`
 - `references/tools-catalog.md`
+- `references/motion-craft.md`
+- `references/tools-catalog-2.md`
+- `references/motion-director.md`
+- `references/sources-ar.md`
 
 ## مركّبة من مهارات الأطلس
 

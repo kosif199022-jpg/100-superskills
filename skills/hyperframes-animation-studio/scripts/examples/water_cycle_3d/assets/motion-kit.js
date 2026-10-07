@@ -1,10 +1,43 @@
-/* KOSIF Motion Kit — professional, deterministic motion helpers on top of GSAP, for HyperFrames compositions
+/* KOSIF Motion Kit v2 — professional, deterministic motion helpers on top of GSAP, for HyperFrames compositions
    (window.__timelines, seconds) and for KOSIF Studio's own renderer (window.render(t) / window.__ready).
    Everything is keyed to the timeline; nothing uses the wall clock or unseeded randomness.
-   Easings (from the motion-director rules): slam = arrive & hit, snap = land with ≤6% overshoot,
-   drive = travel & light, settle = the final decision. */
+   Eases: the four named curves (slam / snap / drive / settle) and SPRINGS (snappy / default / heavy / playful):
+   expensive motion has mass — it accelerates, overshoots a hair and settles. Word masks use clip-path (not
+   overflow:hidden), so HyperFrames' layout check does not report the hidden words as overflowing. */
 (function () {
   const ease = { slam: "expo.out", snap: "back.out(1.3)", drive: "power4.inOut", settle: "power4.out", linear: "none" };
+
+  /* ── springs: a damped oscillator normalised to progress 0..1, usable as a GSAP ease function ── */
+  const SPRINGS = { snappy: { zeta: 0.62, omega: 20 }, default: { zeta: 0.74, omega: 17 }, heavy: { zeta: 1.0, omega: 13 }, playful: { zeta: 0.45, omega: 18 } };
+  function springFn(preset) {
+    const s = typeof preset === "string" ? SPRINGS[preset] || SPRINGS.default : preset;
+    const z = s.zeta, w = s.omega;
+    const f = (t) => {
+      if (z < 1) { const wd = w * Math.sqrt(1 - z * z); return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + (z * w / wd) * Math.sin(wd * t)); }
+      return 1 - Math.exp(-w * t) * (1 + w * t);
+    };
+    const end = f(1);                                       // the tween's duration maps to 1 s of spring time
+    return (p) => f(p) / end;
+  }
+  const spring = (preset) => springFn(preset);
+  /* a value that changes target several times (cursor, camera, width): one spring per change, continuous, from t */
+  function track(t, keys, preset, settle) {
+    const sp = springFn(preset || "default"), T = settle || 0.6;
+    let v = keys[0][1];
+    for (let i = 1; i < keys.length; i++) {
+      const [kt, kv] = keys[i];
+      if (t <= kt) break;
+      const p = Math.min(1, (t - kt) / T);
+      v = v + (kv - v) * sp(p);
+    }
+    return v;
+  }
+  /* camera zoom interpolated in log space: 1x→2x feels as fast as 2x→4x */
+  function zoomTrack(t, keys, preset, settle) {
+    return Math.exp(track(t, keys.map(([kt, kv]) => [kt, Math.log(kv)]), preset, settle));
+  }
+  /* beats: picture and sound read the same clock */
+  function beats(bpm, offset) { const b = 60 / bpm, o = offset || 0; return { at: (n) => o + n * b, len: (n) => n * b, bpm, beat: b }; }
 
   function rng(seed) {                                     // mulberry32: the same seed gives the same film
     let a = (seed >>> 0) || 1;
@@ -24,7 +57,7 @@
     return el;
   }
 
-  /* ── text: words revealed through masks (RTL-safe: whole words move, letters stay joined) ── */
+  /* ── text: words revealed through clip-path masks (RTL-safe: whole words move, letters stay joined) ── */
   function words(el) {
     if (el.dataset.split) return Array.from(el.querySelectorAll(".mk-wi"));
     const keep = Array.from(el.children).filter((c) => c.classList && c.classList.contains("num"));
@@ -37,7 +70,7 @@
     const addWords = (target, list) => list.forEach((w, i) => {
       const mask = document.createElement("span");
       mask.className = "mk-w";
-      mask.style.cssText = "display:inline-block;overflow:hidden;vertical-align:bottom;padding:.06em .04em .18em;margin-bottom:-.18em";   // room for Arabic descenders
+      mask.style.cssText = "display:inline-block;vertical-align:bottom;padding:.06em .04em .18em;margin-bottom:-.18em;clip-path:inset(-0.05em -0.05em 0 -0.05em)";
       const inner = document.createElement("span");
       inner.className = "mk-wi";
       inner.style.cssText = "display:inline-block";
@@ -63,7 +96,7 @@
     tl.fromTo(inners, { yPercent: o.from === "top" ? -115 : 115, opacity: 0 },
       { yPercent: 0, opacity: 1, duration: o.dur || 0.7, stagger: o.stagger == null ? 0.07 : o.stagger, ease: o.ease || ease.slam }, at);
     const num = el.querySelector(".num");
-    if (num) tl.fromTo(num, { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: ease.snap }, at);
+    if (num) tl.fromTo(num, { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: o.numEase || spring("snappy") }, at);
     return inners;
   }
   function hideWords(tl, el, at, o) {
@@ -85,7 +118,7 @@
     tl.fromTo(path, { strokeDashoffset: len }, { strokeDashoffset: 0, duration: dur, ease: o.ease || ease.drive, immediateRender: false }, at);
     if (o.head) {                                                             // an arrowhead that lands when the stroke arrives
       tl.fromTo(o.head, { scale: 0, opacity: 0, transformOrigin: o.headOrigin || "50% 50%" },
-        { scale: 1, opacity: 1, duration: 0.35, ease: ease.snap, immediateRender: false }, at + dur - 0.1);
+        { scale: 1, opacity: 1, duration: 0.35, ease: spring("snappy"), immediateRender: false }, at + dur - 0.1);
     }
     return len;
   }
@@ -207,5 +240,5 @@
     return tl;
   }
 
-  window.MOTION = { ease, rng, svgEl, words, revealWords, hideWords, drawPath, flowDash, rain, vapour, sparkle, camera, flash, grain, vignette, shim, register };
+  window.MOTION = { ease, spring, SPRINGS, track, zoomTrack, beats, rng, svgEl, words, revealWords, hideWords, drawPath, flowDash, rain, vapour, sparkle, camera, flash, grain, vignette, shim, register };
 })();

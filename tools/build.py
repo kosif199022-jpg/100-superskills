@@ -40,7 +40,7 @@ HANDWRITTEN_REFS = ("motion-rules.md", "styles.md", "formula.md", "blindspot-que
                     "color-grading-order.md", "resolve-api-map.md", "reasoning-patterns.md", "structured-output-ladder.md",
                     "model-guidance.md", "judge-design.md", "film-brief-template.md", "motion-floor.md",
                     "captions-rules.md", "model-conventions.md", "driver-trees.md", "power-query-recipes.md",
-                    "dax-patterns.md", "lambda-catalog.md", "formula-translation.md", "studio-guide.md", "drawing-guide.md", "hyperframes-authoring.md", "tools-catalog.md")
+                    "dax-patterns.md", "lambda-catalog.md", "formula-translation.md", "studio-guide.md", "drawing-guide.md", "hyperframes-authoring.md", "tools-catalog.md", "motion-craft.md", "tools-catalog-2.md", "motion-director.md", "sources-ar.md")
 
 sys.path.insert(0, str(TOOLS))
 from data_a import A  # noqa: E402

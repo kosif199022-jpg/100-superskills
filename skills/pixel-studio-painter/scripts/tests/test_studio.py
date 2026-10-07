@@ -565,7 +565,7 @@ class Motion(unittest.TestCase):
             motion.PROJECTS = old
             shutil.rmtree(tmp, ignore_errors=True)
         kit = (HERE / "motion" / "kit" / "motion-kit.js").read_text(encoding="utf-8")
-        for name in ("revealWords", "drawPath", "rain", "vapour", "camera", "grain", "vignette", "shim", "register"):
+        for name in ("revealWords", "drawPath", "rain", "vapour", "camera", "grain", "vignette", "shim", "register", "spring", "track", "zoomTrack", "beats", "clip-path"):
             self.assertIn(name, kit)
         self.assertNotIn("Math.random", kit)                                   # seeded only
 
