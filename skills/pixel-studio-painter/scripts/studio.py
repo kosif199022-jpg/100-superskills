@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import ctypes
 import json
+import os
 import queue
 import re
 import shutil
@@ -365,6 +366,14 @@ class Studio:
         ai.add_command(label="انسخ تعليمات لأي ذكاء اصطناعي", command=self.copy_ai_prompt)
         ai.add_command(label="⚙ إعداد الذكاء الاصطناعي…", command=self.ai_settings)
         m.add_cascade(label="ذكاء اصطناعي", menu=ai)
+        mo = tk.Menu(m, tearoff=0)
+        mo.add_command(label="🎬 مشروع أنيميشن جديد (مسطّح)…", command=lambda: self.motion_new(False))
+        mo.add_command(label="🎬 مشروع أنيميشن جديد (ثلاثي الأبعاد)…", command=lambda: self.motion_new(True))
+        mo.add_separator()
+        mo.add_command(label="🖼 إطار مفتاحي من مشروع… (يُرسم هنا)", command=self.motion_frame)
+        mo.add_command(label="🎞 تصيير فيلم المشروع…", command=self.motion_render)
+        mo.add_command(label="📂 فتح مجلد المشاريع", command=lambda: os.startfile(str(HERE / "motion" / "projects")) if (HERE / "motion" / "projects").exists() else None)
+        m.add_cascade(label="أنيميشن", menu=mo)
         h = tk.Menu(m, tearoff=0)
         h.add_command(label="دليل سريع", accelerator="F1", command=self.show_help)
         m.add_cascade(label="مساعدة", menu=h)
@@ -940,6 +949,91 @@ class Studio:
         ttk.Button(row, text="إعادة الفحص", command=refresh).pack(side="right", padx=2)
         ttk.Button(row, text="إغلاق", command=w.destroy).pack(side="left", padx=2)
         refresh()
+
+    # ── animation (KOSIF Motion): the film pipeline from the window ──────────────────────────────────────
+    def _motion(self, *args, done=None, note=""):
+        """Run motion/motion.py with these arguments in a thread; the last output line goes to the status bar."""
+        motion = HERE / "motion" / "motion.py"
+        if not motion.exists():
+            self.status.set("مجلد motion غير موجود بجوار الاستوديو.")
+            return
+        self.status.set(note or "🎬 يعمل...")
+
+        def work():
+            env = dict(os.environ, PYTHONIOENCODING="utf-8")
+            r = subprocess.run([sys.executable, str(motion), *map(str, args)], capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", cwd=str(motion.parent), env=env)
+            out = (r.stdout or "").strip().splitlines()
+            err = (r.stderr or "").strip().splitlines()
+            last = (out[-1] if out else (err[-1] if err else "")).strip()
+            ok = r.returncode == 0
+
+            def show():
+                self.status.set(("✅ " if ok else "⚠ ") + last[:160])
+                if ok and done:
+                    done(out)
+            self.root.after(0, show)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _motion_project(self, title: str) -> str | None:
+        from tkinter import simpledialog
+        projects = HERE / "motion" / "projects"
+        names = sorted(p.name for p in projects.glob("*") if (p / "index.html").exists()) if projects.exists() else []
+        hint = "المشاريع: " + "، ".join(names) if names else "لا مشاريع بعد"
+        name = simpledialog.askstring(title, f"اسم المشروع:\n{hint}", parent=self.root)
+        return name.strip() if name and name.strip() else None
+
+    def motion_new(self, three_d: bool):
+        from tkinter import simpledialog
+        name = simpledialog.askstring("مشروع أنيميشن جديد", "اسم المشروع (بالإنجليزية بلا مسافات):", parent=self.root)
+        if not name or not name.strip():
+            return
+        secs = simpledialog.askfloat("المدة", "كم ثانية؟", initialvalue=8.0, minvalue=1, maxvalue=600, parent=self.root)
+        if not secs:
+            return
+        title = simpledialog.askstring("العنوان", "عنوان الفيلم (يظهر في الإطار الأول):", initialvalue=name, parent=self.root) or name
+        args = ["new", name.strip(), "--seconds", secs, "--title", title]
+        if three_d:
+            args.append("--3d")
+
+        def done(out):
+            d = HERE / "motion" / "projects" / name.strip()
+            if three_d:
+                self._motion("bundle", name.strip(), note="📦 يحزم مشهد Three.js...", done=lambda o: self.open_code((d / "index.html").read_text(encoding="utf-8")))
+            else:
+                self.open_code((d / "index.html").read_text(encoding="utf-8"))
+        self._motion(*args, note="🎬 ينشئ المشروع...", done=done)
+
+    def motion_frame(self):
+        """A key frame of a project rendered by the film engine, then drawn here pixel by pixel."""
+        from tkinter import simpledialog
+        name = self._motion_project("إطار مفتاحي")
+        if not name:
+            return
+        t = simpledialog.askfloat("الزمن", "الثانية المطلوبة:", initialvalue=1.0, minvalue=0, parent=self.root)
+        if t is None:
+            return
+        out = HERE / "motion" / "projects" / name / "frames"
+
+        def done(o):
+            f = out / f"t{t:05.2f}.png"
+            if f.exists():
+                self.open_image(path=str(f))
+        self._motion("frames", name, "--times", f"{t}", note=f"🖼 يرسم إطار {t} ث من {name}...", done=done)
+
+    def motion_render(self):
+        from tkinter import simpledialog
+        name = self._motion_project("تصيير الفيلم")
+        if not name:
+            return
+        blur = simpledialog.askinteger("ضبابية الحركة", "إطارات فرعية لكل إطار (1 = بلا ضبابية، 4 = سينمائي):", initialvalue=1, minvalue=1, maxvalue=8, parent=self.root)
+        if not blur:
+            return
+        out = OUT / f"{name}.mp4"
+        OUT.mkdir(exist_ok=True)
+        self._motion("render", name, "--engine", "studio", "--blur", blur, "--out", str(out),
+                     note=f"🎞 يصيّر {name} (قد يستغرق دقائق؛ الحالة هنا عند الانتهاء)...",
+                     done=lambda o: self.status.set(f"✅ الفيلم جاهز: out/{out.name}"))
 
     def show_help(self):
         from tkinter import messagebox

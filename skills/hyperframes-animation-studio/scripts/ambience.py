@@ -46,12 +46,38 @@ def _highpass(x: np.ndarray, cutoff: float) -> np.ndarray:
     return x - _lowpass_fast(x, cutoff)
 
 
+def birdsong(n: int, t0: float, t1: float, rng, density: float = 1.0) -> np.ndarray:
+    """Dawn birds: short seeded FM chirps in phrases, placed left/right in the stereo field."""
+    out = np.zeros((n, 2))
+    count = int((t1 - t0) * 2.2 * density)
+    for _ in range(count):
+        start = t0 + rng.random() * (t1 - t0)
+        notes = 2 + int(rng.random() * 5)
+        pan = rng.random()
+        f0 = 2200 + rng.random() * 2600
+        for k in range(notes):
+            dur = 0.05 + rng.random() * 0.09
+            i0 = int((start + k * (dur + 0.03 + rng.random() * 0.05)) * SR)
+            m = int(dur * SR)
+            if i0 + m >= n:
+                break
+            tt = np.arange(m) / SR
+            sweep = f0 * (1 + 0.35 * rng.random() * np.sin(2 * math.pi * (6 + 10 * rng.random()) * tt + rng.random() * 6))
+            env = np.sin(np.pi * tt / dur) ** 1.6
+            tone = np.sin(2 * math.pi * np.cumsum(sweep) / SR) * env * (0.07 + 0.06 * rng.random())
+            out[i0:i0 + m, 0] += tone * (1 - pan)
+            out[i0:i0 + m, 1] += tone * pan
+    return out
+
+
 def synth(seconds: float, rain: list[tuple[float, float]], thunder: list[float], whoosh: list[float],
-          chords: list[tuple[float, str]], seed: int = 7) -> np.ndarray:
+          chords: list[tuple[float, str]], seed: int = 7, birds: list[tuple[float, float]] | None = None) -> np.ndarray:
     n = int(seconds * SR)
     t = np.arange(n) / SR
     rng = np.random.default_rng(seed)
     out = np.zeros((n, 2))
+    for t0, t1 in (birds or []):
+        out += birdsong(n, t0, t1, rng)
     for ch in range(2):
         noise = rng.standard_normal(n)
         # sea: low rumble with a slow swell
@@ -134,11 +160,12 @@ def main():
     ap.add_argument("--thunder", default="", help="t[,t]")
     ap.add_argument("--whoosh", default="", help="t[,t]")
     ap.add_argument("--chords", default="0:A", help="t:NOTE[,t:NOTE]")
+    ap.add_argument("--birds", default="", help="t0:t1[,t0:t1] dawn birdsong")
     ap.add_argument("--seed", type=int, default=7)
     a = ap.parse_args()
     chords = [(float(p.split(":")[0]), p.split(":")[1]) for p in a.chords.split(",") if p]
     data = synth(a.seconds, _pairs(a.rain), [float(v) for v in a.thunder.split(",") if v],
-                 [float(v) for v in a.whoosh.split(",") if v], chords, a.seed)
+                 [float(v) for v in a.whoosh.split(",") if v], chords, a.seed, _pairs(a.birds))
     write_wav(a.out, data)
     print(a.out, f"{a.seconds}s stereo {SR} Hz")
 

@@ -164,7 +164,10 @@ colour rule + tiled detail maps; `alpineColour` built in), `makeForest` (instanc
 Water), `makeRibbon` (a river revealed along a curve), `makeCloudSlab` (raymarched), `makeVapour`/`makeRain`, `makeLensflare`,
 `makePost` (bloom, god rays, DOF, grade/vignette/CA, grain, ACES, `sunOnScreen`), `cameraKeys`, and `makeFrameLoop` (the
 render(t) with GPU sub-frame motion blur). `python motion/motion.py new NAME --3d` scaffolds a film on it; the water-cycle
-scene is ~90 lines on top of the kit and renders pixel-identically to the hand-written version.
+scene is ~90 lines on top of the kit and renders pixel-identically to the hand-written version. v3 of the kit adds
+`coniferCrown` (four jagged tiers + spire) and `makeFlock` (instanced flapping birds on a keyed path, placed near the
+focus plane and against the sky); `ambience.py --birds t0:t1` synthesises dawn birdsong. The studio window has an
+**أنيميشن** menu: new 2D/3D project, a key frame drawn in the studio, render with optional motion blur.
 
 `motion/projects/water_cycle/` is the flat showcase: 17 s, five scenes (dawn, evaporation, condensation, precipitation,
 collection, the loop), synthesised ambience, checked and rendered by HyperFrames. `motion/references/` holds the

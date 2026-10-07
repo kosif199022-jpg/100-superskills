@@ -139,7 +139,32 @@ export function alpineColour(h, slope, x, z, c) {
 }
 export function slopeOf(height, x, z) { const e = 6; const dx = height(x + e, z) - height(x - e, z), dz = height(x, z + e) - height(x, z - e); return Math.hypot(dx, dz) / (2 * e); }
 
-/* instanced two-tier conifers; accept(x, z, h) decides where they grow */
+/* a conifer crown: stacked tiers whose rims are pushed in and out by seeded noise, so the silhouette reads as
+   layered branches rather than a cone; the top tier is a narrow spire */
+export function coniferCrown(tiers = 4, seed = 7) {
+  const r = rng(seed), parts = [];
+  let y = 9, radius = 9.5, h = 11;
+  for (let i = 0; i < tiers; i++) {
+    const g = new THREE.ConeGeometry(radius, h, 9, 1, false);
+    const p = g.attributes.position;
+    for (let k = 0; k < p.count; k++) {
+      if (Math.abs(p.getY(k) + h / 2) < 1e-3) {           // rim vertices: jagged, drooping
+        const a = Math.atan2(p.getZ(k), p.getX(k)), m = 0.72 + 0.4 * r();
+        p.setX(k, p.getX(k) * m); p.setZ(k, p.getZ(k) * m); p.setY(k, p.getY(k) - 1.5 * r());
+        void a;
+      }
+    }
+    g.translate(0, y + h / 2 - 2, 0);
+    g.computeVertexNormals();
+    parts.push(g);
+    y += h * 0.55; radius *= 0.74; h *= 0.9;
+  }
+  const spire = new THREE.ConeGeometry(radius * 0.8, h * 1.1, 7, 1, false); spire.translate(0, y + h * 0.4, 0);
+  parts.push(spire);
+  return mergeGeometries(parts);
+}
+
+/* instanced conifers; accept(x, z, h) decides where they grow */
 export function makeForest(o) {
   const r = rng(o.seed || 42), MAX = o.max || 22000, [x0, x1, z0, z1] = o.region;
   const mats = [], cols = [], tmp = new THREE.Object3D(), cc = new THREE.Color();
@@ -156,9 +181,7 @@ export function makeForest(o) {
     cc.setHSL((o.hue == null ? 0.25 : o.hue) + 0.07 * (r() - 0.5), 0.3 + 0.25 * r(), 0.1 + 0.1 * r());
     cols.push(cc.clone());
   }
-  const tierA = new THREE.ConeGeometry(8.0, 20, 7, 1, false); tierA.translate(0, 16, 0);
-  const tierB = new THREE.ConeGeometry(5.2, 18, 7, 1, false); tierB.translate(0, 29, 0);
-  const crown = mergeGeometries([tierA, tierB]);
+  const crown = coniferCrown(o.tiers || 4);
   const trunk = new THREE.CylinderGeometry(1.1, 1.6, 10, 5); trunk.translate(0, 5, 0);
   const crowns = new THREE.InstancedMesh(crown, new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0 }), mats.length);
   const trunks = new THREE.InstancedMesh(trunk, new THREE.MeshStandardMaterial({ color: 0x4a3524, roughness: 0.95 }), mats.length);
@@ -167,6 +190,49 @@ export function makeForest(o) {
   crowns.castShadow = true; crowns.receiveShadow = true; trunks.castShadow = true;
   const g = new THREE.Group(); g.add(crowns, trunks); g.userData.count = mats.length;
   return g;
+}
+
+/* a flock of birds: instanced V shapes that flap, following a path of [t, x, y, z] keys with seeded offsets;
+   visible between t0 and t1 (userData.set(t)) */
+export function makeFlock(o) {
+  const N = o.n || 18, r = rng(o.seed || 23), keys = o.path;
+  const geo = new THREE.BufferGeometry();
+  // wings: two triangles spanning local X (the bird flies along local -Z); body: a small vertical sliver so the
+  // bird still reads when seen level, where a flat wing would be edge-on
+  const verts = new Float32Array([ -1, 0, 0, 0, 0, 0.35, 0, 0, -0.35,   1, 0, 0, 0, 0, -0.35, 0, 0, 0.35,
+                                   0, 0.12, 0.45, 0, -0.12, 0.2, 0, 0.12, -0.5,   0, -0.12, 0.2, 0, -0.12, -0.3, 0, 0.12, -0.5 ]);
+  geo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uT: { value: 0 }, uOn: { value: 0 }, uColor: { value: new THREE.Color(o.color == null ? 0x1a1d22 : o.color) } },
+    vertexShader: `attribute float phase; uniform float uT, uOn; varying float vA;
+      void main(){ vec3 p = position; float flap = sin(uT * 9.0 + phase * 6.2832) * 0.8;
+        p.y += abs(p.x) * (0.3 + flap);                           // dihedral + the wing tips beating up and down
+        vec4 mv = modelViewMatrix * instanceMatrix * vec4(p, 1.0); gl_Position = projectionMatrix * mv; vA = uOn; }`,
+    fragmentShader: `uniform vec3 uColor; varying float vA; void main(){ if (vA < 0.01) discard; gl_FragColor = vec4(uColor, 1.0); }`,
+    side: THREE.DoubleSide, transparent: true });
+  const mesh = new THREE.InstancedMesh(geo, mat, N);
+  const phase = new Float32Array(N), offs = [];
+  for (let i = 0; i < N; i++) { phase[i] = r(); offs.push(new THREE.Vector3((r() - 0.5) * (o.spread || 120), (r() - 0.5) * (o.spread || 120) * 0.35, (r() - 0.5) * (o.spread || 120))); }
+  geo.setAttribute("phase", new THREE.InstancedBufferAttribute(phase, 1));
+  mesh.frustumCulled = false;
+  const tmp = new THREE.Object3D(), pos = new THREE.Vector3(), nxt = new THREE.Vector3();
+  const at = (t, out) => { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++;
+    const a = keys[i], b = keys[i + 1], u = clamp01((t - a[0]) / Math.max(1e-3, b[0] - a[0]));
+    return out.set(lerp(a[1], b[1], u), lerp(a[2], b[2], u), lerp(a[3], b[3], u)); };
+  mesh.userData.set = (t) => {
+    const on = t >= o.t0 && t <= o.t1 ? 1 : 0;
+    mat.uniforms.uT.value = t; mat.uniforms.uOn.value = on;
+    if (!on) return;
+    at(t, pos); at(t + 0.2, nxt);
+    const dir = nxt.clone().sub(pos); if (dir.lengthSq() < 1e-6) dir.set(1, 0, 0);
+    for (let i = 0; i < N; i++) {
+      tmp.position.copy(pos).add(offs[i]); tmp.position.y += Math.sin(t * 1.3 + phase[i] * 6.28) * 6;
+      tmp.lookAt(tmp.position.clone().sub(dir));                // Object3D.lookAt points local +Z at the target; the bird flies along -Z
+      tmp.scale.setScalar((o.size || 9) * (0.8 + 0.4 * phase[i])); tmp.updateMatrix(); mesh.setMatrixAt(i, tmp.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  };
+  return mesh;
 }
 
 /* ───────── water ───────── */

@@ -619,7 +619,7 @@ class Motion(unittest.TestCase):
             out = motion.bundle(str(d))
             self.assertGreater(out.stat().st_size, 300_000)                   # three.js + addons are inside
             kit = (HERE / "motion" / "kit" / "three-kit.js").read_text(encoding="utf-8")
-            for name in ("makeSky", "makeTerrain", "makeForest", "makeSea", "makeCloudSlab", "makePost", "makeFrameLoop", "cameraKeys", "makeRibbon"):
+            for name in ("makeSky", "makeTerrain", "makeForest", "coniferCrown", "makeFlock", "makeSea", "makeCloudSlab", "makePost", "makeFrameLoop", "cameraKeys", "makeRibbon"):
                 self.assertIn(f"export function {name}", kit)
             self.assertNotIn("Math.random", kit)
         finally:
