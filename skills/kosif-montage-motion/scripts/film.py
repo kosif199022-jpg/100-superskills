@@ -179,11 +179,41 @@ def _grabber(pg, capture: str = "png"):
         return lambda: pg.screenshot(timeout=90000, **kw)
 
 
-def _workers_default(n_frames: int) -> int:
+def _avail_gb() -> float | None:
+    """Memory new work can still allocate (GB). A malloc fails when the COMMIT limit is reached, not when RAM is full
+    (Windows compresses and pages), so: Windows → commit headroom (GlobalMemoryStatusEx.ullAvailPageFile); Linux →
+    MemAvailable + half the free swap; else psutil's available RAM."""
+    try:
+        if os.name == "nt":
+            import ctypes
+
+            class MS(ctypes.Structure):
+                _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong), ("ullTotalPhys", ctypes.c_ulonglong),
+                            ("ullAvailPhys", ctypes.c_ulonglong), ("ullTotalPageFile", ctypes.c_ulonglong), ("ullAvailPageFile", ctypes.c_ulonglong),
+                            ("ullTotalVirtual", ctypes.c_ulonglong), ("ullAvailVirtual", ctypes.c_ulonglong), ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
+            m = MS(); m.dwLength = ctypes.sizeof(MS)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m)):
+                return m.ullAvailPageFile / 2 ** 30
+        else:
+            info = {ln.split(":")[0]: int(ln.split()[1]) for ln in open("/proc/meminfo", encoding="ascii") if ln.split()[1:2]}
+            if "MemAvailable" in info:
+                return (info["MemAvailable"] + 0.5 * info.get("SwapFree", 0)) / 2 ** 20
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        import psutil
+        return psutil.virtual_memory().available / 2 ** 30
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _workers_default(n_frames: int, w: int = 1920, h: int = 1080) -> int:
     """How many browsers to run side by side. Parallel pages pay off only when there are enough frames to amortise each
     page's build (3D scenes mesh and compile shaders on load): never more than one page per 20 frames, at most 6.
     Software WebGL (SwiftShader) already rasterises on every core — measured on 4 cores, 2 pages beat 1 and 4 — so it
-    gets one page per 2 cores. KOSIF_WORKERS overrides."""
+    gets one page per 2 cores. Memory caps it too: each page with its own x264 encoder needs ≈ 0.45 GB + 0.25 GB per
+    megapixel of what can still be allocated (six 1080×1920 workers beside a test run and other jobs ended in
+    "x264 malloc failed"). KOSIF_WORKERS overrides."""
     env = os.environ.get("KOSIF_WORKERS")
     if env:
         return max(1, int(env))
@@ -192,7 +222,11 @@ def _workers_default(n_frames: int) -> int:
         return 1
     import html_render
     per_page = 2 if getattr(html_render, "_USE_SOFT", False) else 1
-    return max(1, min(cores // per_page, 6, n_frames // 20))
+    nw = max(1, min(cores // per_page, 6, n_frames // 20))
+    free = _avail_gb()
+    if free is not None:
+        nw = max(1, min(nw, int((free - 2.0) / (0.45 + 0.25 * w * h / 1e6))))   # keep ~2 GB of headroom for the rest
+    return nw
 
 
 auto_workers = _workers_default                                    # the Pro branch's public name for the same policy
@@ -339,7 +373,7 @@ def film_animate(source: str, out: Path, fps: int = 30, seconds: float | None = 
             browser.close(); p.stop()
         n = int(round(seconds * fps))
         k = max(1, int(blur))
-        nw = workers or _workers_default(n)
+        nw = workers or _workers_default(n, int(w * scale), int(h * scale))
         nw = max(1, min(nw, n))
         base = dict(src=str(src), w=w, h=h, fps=fps, blur=k, shutter=shutter, stack=stack, start=start, capture=capture,
                     preset=preset, crf=crf, scale=scale, frames_dir=str(frames_dir) if frames_dir else None)
