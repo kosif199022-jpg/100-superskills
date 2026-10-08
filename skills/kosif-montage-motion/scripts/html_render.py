@@ -32,15 +32,45 @@ GPU_FLAGS = ["--headless=new", "--hide-scrollbars", *(_SOFT if _USE_SOFT else _H
              "--allow-file-access-from-files"]
 
 
+def page_flags(page: str | Path) -> list[str]:
+    """Launch flags for one page. A DOM/CSS/canvas-2D composition is captured about twice as fast with the GPU process
+    off (no SwiftShader round trip), so pages that never mention WebGL / three.js get --disable-gpu on software
+    machines; 3D pages keep the GL path. KOSIF_GPU=1 forces the GL path, KOSIF_GPU=0 forces it off."""
+    import re
+    flags = list(GPU_FLAGS[2:])
+    force = os.environ.get("KOSIF_GPU")
+    if force == "1" or not _USE_SOFT:
+        return flags
+    if force == "0":
+        return flags + ["--disable-gpu"]
+    try:
+        html = Path(page).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return flags
+    if re.search(r"webgl|three(?:\.|-kit|js)|window\.K3|K3\.|main\.bundle|babylon|pixi", html, re.I):
+        return flags
+    return flags + ["--disable-gpu"]
+
+
 def browser_path() -> str | None:
     """Edge or Chrome on Windows; chromium / google-chrome / msedge on Linux and macOS; None = Playwright's own Chromium."""
     for p in EDGES + ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"]:
         if os.path.exists(p):
             return p
+    if os.environ.get("KOSIF_BROWSER") and os.path.exists(os.environ["KOSIF_BROWSER"]):
+        return os.environ["KOSIF_BROWSER"]
     for name in ("msedge", "chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser"):
         found = shutil.which(name)
         if found:
             return found
+    # a Playwright browser cache shipped with the machine (cloud sandboxes, CI images): use it whatever the pip version
+    import glob
+    for root in filter(None, (os.environ.get("PLAYWRIGHT_BROWSERS_PATH"), "/opt/pw-browsers", os.path.expanduser("~/.cache/ms-playwright"))):
+        for pat in ("chromium", "chromium-*/chrome-linux/chrome", "chromium-*/chrome-linux64/chrome",
+                    "chromium-*/chrome-mac*/Chromium.app/Contents/MacOS/Chromium", "chromium-*/chrome-win/chrome.exe"):
+            for found in sorted(glob.glob(os.path.join(root, pat)), reverse=True):
+                if os.path.isfile(found) and os.access(found, os.X_OK):
+                    return found
     if _playwright():
         return None
     raise RuntimeError("no Edge, Chrome or Chromium found for HTML rendering (pip install playwright && playwright install chromium)")
@@ -64,7 +94,7 @@ def render_html(page: str | Path, out: str | Path, width: int = 1920, height: in
     sp = _playwright()
     if sp:
         with sp() as p:
-            browser = p.chromium.launch(executable_path=browser_path(), headless=True, args=GPU_FLAGS[2:])  # None → bundled Chromium
+            browser = p.chromium.launch(executable_path=browser_path(), headless=True, args=page_flags(page))  # None → bundled Chromium
             ctx = browser.new_context(viewport={"width": width, "height": height}, device_scale_factor=scale)
             pg = ctx.new_page()
             pg.goto(page.as_uri(), wait_until="load", timeout=timeout * 1000)

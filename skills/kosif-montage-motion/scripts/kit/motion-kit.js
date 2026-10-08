@@ -531,9 +531,54 @@
     addEventListener("keydown", (e) => { if (e.code === "Space") { e.preventDefault(); playing ? pause() : play(); } });
     show(0);
   }
+  // ── v4 additions: impact, depth and emphasis — all seeded, all a function of t ──────────────────────────────
+  function shake(tl, el, at, o) {                           // camera hit: decaying seeded jitter (x, y, a touch of rotation)
+    o = o || {}; const amp = o.amp || 14, dur = o.dur || 0.5, n = Math.max(4, Math.round(dur * (o.hz || 28))), r = rng(o.seed || 7);
+    for (let i = 0; i < n; i++) {
+      const k = Math.pow(1 - i / n, 1.8), t = at + dur * i / n;
+      tl.to(el, { x: (r() * 2 - 1) * amp * k, y: (r() * 2 - 1) * amp * k * 0.7, rotation: (r() * 2 - 1) * (o.rot || 0.6) * k, duration: dur / n, ease: "none" }, t);
+    }
+    tl.to(el, { x: 0, y: 0, rotation: 0, duration: 0.12, ease: ease.settle }, at + dur);
+  }
+  function parallax(tl, layers, at, dur, o) {               // layers: [{el, depth}] — far layers drift less than near ones
+    o = o || {}; const dx = o.dx || 0, dy = o.dy || 0, scale = o.scale || 0;
+    layers.forEach((L) => { const d = L.depth == null ? 1 : L.depth;
+      tl.fromTo(L.el, { x: 0, y: 0, scale: 1 }, { x: dx * d, y: dy * d, scale: 1 + scale * d, duration: dur, ease: o.ease || "none" }, at); });
+  }
+  function glitch(tl, el, at, o) {                          // a digital stutter: RGB split + slices, seeded, ≤ 0.4 s, back to clean
+    o = o || {}; const dur = o.dur || 0.3, n = Math.max(3, Math.round(dur * 30)), r = rng(o.seed || 3), amp = o.amp || 10;
+    for (let i = 0; i < n; i++) {
+      const t = at + dur * i / n, k = 1 - i / n;
+      tl.set(el, { x: (r() * 2 - 1) * amp * k, filter: `drop-shadow(${(r() * 2 - 1) * 4 * k}px 0 0 rgba(255,0,80,.7)) drop-shadow(${(r() * 2 - 1) * 4 * k}px 0 0 rgba(0,200,255,.7))`,
+        clipPath: r() < 0.5 ? `inset(${Math.round(r() * 80)}% 0 ${Math.round(r() * 20)}% 0)` : "inset(0 0 0 0)" }, t);
+    }
+    tl.set(el, { x: 0, filter: "none", clipPath: "inset(0 0 0 0)" }, at + dur);
+  }
+  function stagger(tl, els, at, o) {                        // a list arriving one by one (cards, bullets, icons), whole items move
+    o = o || {}; const gap = o.gap == null ? 0.07 : o.gap, dur = o.dur || 0.55, from = o.from || { y: 28, opacity: 0, scale: 0.96 };
+    Array.from(els).forEach((el, i) => tl.fromTo(el, from, { y: 0, x: 0, opacity: 1, scale: 1, duration: dur, ease: o.ease || E.out }, at + i * gap));
+    return at + (els.length - 1) * gap + dur;
+  }
+  function lowerThird(tl, root, at, o) {                    // name + role in the lower safe area; Arabic-safe (RTL on the box only)
+    o = o || {}; const box = document.createElement("div"); box.className = "mk-lower-third";
+    const rtl = /[\u0600-\u06FF]/.test((o.title || "") + (o.sub || ""));
+    box.style.cssText = `position:absolute;${o.side === "right" || (rtl && o.side !== "left") ? "right" : "left"}:${o.inset || 72}px;bottom:${o.bottom || 160}px;` +
+      `direction:${rtl ? "rtl" : "ltr"};font-family:${o.font || "inherit"};color:${o.color || "#fff"};overflow:hidden`;
+    box.innerHTML = `<div class="mk-lt-bar" style="height:4px;width:0;background:${o.accent || "#E7B65A"};margin-bottom:10px"></div>` +
+      `<div class="mk-lt-title" style="font-size:${o.size || 44}px;font-weight:700;line-height:1.2;opacity:0;transform:translateY(16px)">${o.title || ""}</div>` +
+      `<div class="mk-lt-sub" style="font-size:${Math.round((o.size || 44) * 0.55)}px;opacity:0;transform:translateY(12px);color:${o.subColor || "rgba(255,255,255,.75)"}">${o.sub || ""}</div>`;
+    root.appendChild(box);
+    const bar = box.querySelector(".mk-lt-bar"), title = box.querySelector(".mk-lt-title"), sub = box.querySelector(".mk-lt-sub");
+    tl.to(bar, { width: o.barWidth || 120, duration: 0.4, ease: E.out }, at);
+    tl.to(title, { opacity: 1, y: 0, duration: 0.5, ease: E.out }, at + 0.12);
+    tl.to(sub, { opacity: 1, y: 0, duration: 0.5, ease: E.out }, at + 0.24);
+    if (o.hold) { const off = at + o.hold; tl.to([title, sub], { opacity: 0, y: -10, duration: 0.3, ease: E.in }, off); tl.to(bar, { width: 0, duration: 0.3, ease: E.in }, off + 0.1); }
+    return box;
+  }
   function register(id, tl) { window.__timelines = window.__timelines || {}; window.__timelines[id] = tl; return tl; }
 
-  window.MOTION = { version: 3, ease, E, bezier, logEase, lmix, clamp01, hitPulse, durFor, spring, SPRINGS, SPR, springStep, track, zoomTrack, beats, channels, sampled, rng, hash, svgEl,
+  window.MOTION = { version: 4, ease, E, bezier, logEase, lmix, clamp01, hitPulse, durFor, spring, SPRINGS, SPR, springStep, track, zoomTrack, beats, channels, sampled, rng, hash, svgEl,
     palette, words, revealWords, hideWords, riseWords, maskRise, typeOn, scramble, counter, drawPath, flowDash, morphPath, rain, vapour, sparkle,
-    camera, push, breathe, flash, iris, flood, rackFocus, roll, polarity, squash, speedBlur, shot, cursor, cursorPath, moveCursor, press, grain, vignette, shim, register };
+    camera, push, breathe, flash, iris, flood, rackFocus, roll, polarity, squash, speedBlur, shot, cursor, cursorPath, moveCursor, press, grain, vignette,
+    shake, parallax, glitch, stagger, lowerThird, shim, register };
 })();

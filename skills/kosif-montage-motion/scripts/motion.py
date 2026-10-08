@@ -1,10 +1,11 @@
 """KOSIF Motion — professional animations as HTML compositions (HyperFrames format + GSAP + the motion kit),
 rendered by HyperFrames' CLI when it is installed here, or by KOSIF Studio's own frame renderer.
 
-    python motion.py new NAME [--seconds 8] [--fps 30] [--size 1920x1080] [--title "..."]   a project in projects/NAME
+    python motion.py new NAME [--seconds 8] [--fps 30] [--size 1920x1080] [--title "..."] [--3d|--canvas|--lab]   a project in projects/NAME
     python motion.py frames PROJECT [--times 0.5,2,4,8] [--out DIR]                           key frames (the 8-second gate)
     python motion.py check PROJECT                                                             HyperFrames lint + runtime validation
-    python motion.py render PROJECT [--engine auto|hyperframes|studio] [--quality looks] [--fps 30] [--out X.mp4]
+    python motion.py render PROJECT [--engine auto|hyperframes|studio] [--workers 0] [--draft] [--force] [--out X.mp4]
+    python motion.py preview PROJECT                                                              a draft cut in a fraction of the time
     python motion.py measure FILM.mp4 [--fps 15]                                               motion energy: still share, peak, mean
     python motion.py lint PROJECT                                                               determinism, contract and taste checks
     python motion.py sheet FILM.mp4 [--at 4.2] [--out DIR]                                      contact sheet, phone test, strip, review.md
@@ -82,8 +83,12 @@ def _env() -> dict:
 
 
 def project_dir(name: str) -> Path:
+    """A project by path, by `projects/NAME`, or by bare NAME — wherever projects live (KOSIF_MOTION_HOME, the tool, cwd)."""
     p = Path(name)
-    return p if p.is_dir() else PROJECTS / name
+    for cand in (p, PROJECTS / p.name, PROJECTS.parent / p, Path.cwd() / p, HERE / p):
+        if (cand / "index.html").exists():
+            return cand
+    return p if p.is_dir() else PROJECTS / p.name
 
 
 def duration_of(index: Path) -> float:
@@ -92,7 +97,11 @@ def duration_of(index: Path) -> float:
     return float(m.group(1)) if m else 10.0
 
 
-def new(name: str, seconds: float, fps: int, size: str, title: str, three_d: bool = False, canvas: bool = False) -> Path:
+LAB_KIT = HERE / "kit" / "lab-kit.js"
+SHAPE_KIT = HERE / "kit" / "shape-kit.js"                          # the product-lab look (fur, eyes, characters, HUD, orbit walk)
+
+
+def new(name: str, seconds: float, fps: int, size: str, title: str, three_d: bool = False, canvas: bool = False, lab: bool = False) -> Path:
     """A project from the flat template, or (three_d) from the cinematic 3D template: src/main.js on the three-kit,
     bundled by `motion.py bundle` before rendering."""
     d = PROJECTS / name
@@ -100,7 +109,13 @@ def new(name: str, seconds: float, fps: int, size: str, title: str, three_d: boo
     w, h = (int(v) for v in size.lower().split("x"))
     fill = lambda s: (s.replace("{{TITLE}}", title or name).replace("{{W}}", str(w)).replace("{{H}}", str(h))
                        .replace("{{SECONDS}}", str(seconds)).replace("{{FPS}}", str(fps)))
-    if three_d:
+    if lab:                                                    # the lab route: three-kit bundle + lab-kit, HUD, orbit walk, two plush characters
+        tdir = TEMPLATE.parent / "lab"
+        (d / "src").mkdir(exist_ok=True)
+        (d / "index.html").write_text(fill((tdir / "index.html").read_text(encoding="utf-8")), encoding="utf-8")
+        (d / "src" / "main.js").write_text(fill((tdir / "main.js").read_text(encoding="utf-8")), encoding="utf-8")
+        shutil.copy2(K3_BUNDLE, d / "assets" / "three-kit.bundle.js"); shutil.copy2(LAB_KIT, d / "assets" / "lab-kit.js")
+    elif three_d:
         tdir = TEMPLATE.parent / "scene3d"
         (d / "src").mkdir(exist_ok=True)
         (d / "index.html").write_text(fill((tdir / "index.html").read_text(encoding="utf-8")), encoding="utf-8")
@@ -113,8 +128,9 @@ def new(name: str, seconds: float, fps: int, size: str, title: str, three_d: boo
             js = js.replace("export function build", "function build").replace("export ", "")
             (d / "src" / "main.js").write_text(js, encoding="utf-8")
             shutil.copy2(K3_BUNDLE, d / "assets" / "three-kit.bundle.js")
+            shutil.copy2(SHAPE_KIT, d / "assets" / "shape-kit.js")          # window.K3S: SDF sculpting, plush, characters
             html = (d / "index.html").read_text(encoding="utf-8").replace('<script src="assets/main.bundle.js"></script>',
-                                                                            '<script src="assets/three-kit.bundle.js"></script>\n<script src="src/main.js"></script>')
+                                                                            '<script src="assets/three-kit.bundle.js"></script>\n<script src="assets/shape-kit.js"></script>\n<script src="src/main.js"></script>')
             (d / "index.html").write_text(html, encoding="utf-8")
     elif canvas:                                               # the canvas route: one file, window.seek(t)
         (d / "index.html").write_text(fill((TEMPLATE.parent / "canvas.html").read_text(encoding="utf-8")), encoding="utf-8")
@@ -128,6 +144,37 @@ def new(name: str, seconds: float, fps: int, size: str, title: str, three_d: boo
 def sync_assets(d: Path):
     (d / "assets").mkdir(exist_ok=True)
     shutil.copy2(KIT, d / "assets" / "motion-kit.js")
+    if GSAP.exists():
+        shutil.copy2(GSAP, d / "assets" / "gsap.min.js")
+    index = d / "index.html"
+    html = index.read_text(encoding="utf-8") if index.exists() else ""
+    for name, src in (("lab-kit.js", LAB_KIT), ("three-kit.bundle.js", K3_BUNDLE), ("shape-kit.js", SHAPE_KIT)):
+        # refresh the kits a project uses — present already, or named by its page (examples ship without the copies)
+        if src.exists() and ((d / "assets" / name).exists() or f"assets/{name}" in html):
+            shutil.copy2(src, d / "assets" / name)
+
+
+def _esbuild_cmd(esb: Path) -> list[str]:
+    """esbuild's bin/esbuild is a JS shim on Windows/macOS installs but the native binary itself on Linux."""
+    head = esb.read_bytes()[:4]
+    return [str(esb)] if head[:4] == b"\x7fELF" or head[:2] == b"MZ" or head[:4] in (b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe") else [shutil.which("node") or "node", str(esb)]
+
+
+def kit_bundle() -> Path:
+    """Rebuild kit/three-kit.bundle.js (three.js + three-kit as window.K3) with esbuild — after editing three-kit.js.
+    Needs `npm install three@0.186.1 esbuild` in scripts/ (or NODE_PATH pointing at such a node_modules)."""
+    roots = [HERE / "node_modules"] + [Path(p) for p in os.environ.get("NODE_PATH", "").split(os.pathsep) if p]
+    esb = next((r / "esbuild" / "bin" / "esbuild" for r in roots if (r / "esbuild" / "bin" / "esbuild").exists()), None)
+    node = shutil.which("node")
+    if not esb or not node:
+        raise SystemExit("esbuild/node not found: npm install three@0.186.1 esbuild  (in scripts/)")
+    env = {**os.environ, "NODE_PATH": os.pathsep.join(str(r) for r in roots)}
+    r = subprocess.run([*_esbuild_cmd(esb), str(HERE / "kit" / "k3-entry.js"), "--bundle", "--format=iife", "--minify", "--target=es2020",
+                        f"--outfile={K3_BUNDLE}"], cwd=HERE, env=env, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise SystemExit(r.stderr[-1500:])
+    print(K3_BUNDLE, f"{K3_BUNDLE.stat().st_size // 1024} KB")
+    return K3_BUNDLE
     if GSAP.exists():
         shutil.copy2(GSAP, d / "assets" / "gsap.min.js")
 
@@ -146,7 +193,7 @@ def bundle(name: str, entry: str = "src/main.js", out: str = "assets/main.bundle
     target = d / out
     # assets imported by the scene are inlined (GLB/HDR/PNG/JPG/WAV as data URLs, JSON as data), so file:// renders need no server
     loaders = [f"--loader:{ext}=dataurl" for ext in (".glb", ".gltf", ".hdr", ".png", ".jpg", ".jpeg", ".webp", ".wav", ".bin")] + ["--loader:.json=json"]
-    r = subprocess.run([node, str(esb), str(d / entry), "--bundle", "--format=iife", "--minify", "--target=es2020", *loaders,
+    r = subprocess.run([*_esbuild_cmd(esb), str(d / entry), "--bundle", "--format=iife", "--minify", "--target=es2020", *loaders,
                         f"--outfile={target}"], cwd=HERE, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode != 0:
         raise SystemExit(r.stderr[-1500:])
@@ -169,24 +216,31 @@ def frames(name: str, times: list[float], out: Path | None, timeout: float = 300
     m = re.search(r'data-width="(\d+)"[^>]*data-height="(\d+)"', html)
     w, h = (int(m.group(1)), int(m.group(2))) if m else (1920, 1080)
     files = []
-    with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=html_render.browser_path(), headless=True, args=html_render.GPU_FLAGS[2:])
-        pg = browser.new_context(viewport={"width": w, "height": h}).new_page()
-        errors = []
-        pg.on("pageerror", lambda e: errors.append(str(e)[:200]))
-        pg.on("console", lambda m: errors.append("console." + m.type + ": " + m.text[:200]) if m.type in ("error", "warning") else None)
-        pg.goto((d / "index.html").resolve().as_uri(), wait_until="load", timeout=timeout * 1000)
-        pg.wait_for_function("window.__ready === true || typeof window.seek === 'function'", timeout=timeout * 1000)
+    p, browser, pg, _ = film._open_page(d / "index.html", w, h, timeout * 1000)
+    errors: list[str] = []
+    pg.on("pageerror", lambda e: errors.append(str(e)[:200]))
+    pg.on("console", lambda m: errors.append("console." + m.type + ": " + m.text[:200]) if m.type in ("error", "warning") else None)
+    try:
+        grab = film._grabber(pg, "png")
         for t in times:
-            pg.evaluate(film.SEEK_JS, t)
-            pg.wait_for_function("window.__ready === true", timeout=timeout * 1000)
             f = out / f"t{t:05.2f}.png"
-            f.write_bytes(pg.screenshot(type="png"))
+            for attempt in range(4):                           # a busy machine can stall one grab: seek again and retry
+                try:
+                    pg.evaluate(film.SEEK_JS, t)
+                    pg.wait_for_function("window.__ready === true", timeout=timeout * 1000)
+                    f.write_bytes(grab())
+                    break
+                except Exception as e:                         # noqa: BLE001 — playwright TimeoutError and friends
+                    if attempt == 3:
+                        raise
+                    print(f"t={t}: {type(e).__name__}, retry {attempt + 1}", file=sys.stderr)
+                    pg.wait_for_timeout(1500 * (attempt + 1))
             files.append(f)
             print(f)
-        browser.close()
-        if errors:
-            print("page errors:", *errors[:5], sep="\n  ")
+    finally:
+        browser.close(); p.stop()
+    if errors:
+        print("page errors:", *errors[:5], sep="\n  ")
     return files
 
 
@@ -199,15 +253,54 @@ def check(name: str) -> int:
     return r.returncode
 
 
+def _fingerprint(d: Path, params: dict) -> str:
+    """What the render depends on: every text source in the project (html/js/css/json) by content, every binary asset
+    by name + size + mtime, plus the render parameters. Same fingerprint → the same film, so it need not be rendered twice."""
+    import hashlib
+    h = hashlib.sha1(json.dumps(params, sort_keys=True).encode())
+    for f in sorted(p for p in d.rglob("*") if p.is_file() and "frames" not in p.parts and not p.name.startswith(".")):
+        rel = f.relative_to(d).as_posix().encode()
+        if f.suffix.lower() in (".html", ".htm", ".js", ".css", ".json", ".svg", ".txt"):
+            h.update(rel); h.update(f.read_bytes())
+        else:
+            st = f.stat(); h.update(rel); h.update(f"{st.st_size}:{int(st.st_mtime)}".encode())
+    return h.hexdigest()
+
+
 def render(name: str, engine: str, quality: str, fps: int | None, out: Path | None, blur: int = 1, shutter: float = 0.5,
-           stack: str = "average") -> Path:
+           stack: str = "average", workers: int = 0, draft: bool = False, force: bool = False, capture: str | None = None,
+           preset: str | None = None, crf: int | None = None) -> Path:
+    """draft: half size, 15 fps, ultrafast/crf 23, JPEG capture, no sub-frame blur — a review cut in a fraction of the
+    time (the same page, the same t → the same composition). workers: browsers in parallel (0 = by core count).
+    A finished film whose fingerprint (sources + parameters) is unchanged is not rendered again unless force."""
     d = project_dir(name)
     index = d / "index.html"
-    out = out or OUT_DIR / f"{d.name}.mp4"
+    out = out or OUT_DIR / (f"{d.name}.draft.mp4" if draft else f"{d.name}.mp4")
     out.parent.mkdir(parents=True, exist_ok=True)
     cmd = hf_cmd()
     use_hf = engine == "hyperframes" or (engine == "auto" and cmd is not None)
+    if draft:
+        use_hf = False
+    size = _size(index)
+    scale = 1.0
+    if draft:                                                  # the page keeps its own layout; the browser draws it at half the pixels
+        scale, fps, blur = 0.5, fps or 15, 1
+    capture = capture or ("jpeg" if draft else "png")
+    preset = preset or ("ultrafast" if draft else "medium")
+    crf = crf if crf is not None else (23 if draft else 18)
+    params = {"engine": "hyperframes" if use_hf else "studio", "fps": fps or _fps(index), "size": size, "scale": scale, "blur": blur, "shutter": shutter,
+              "stack": stack, "capture": capture, "preset": preset, "crf": crf, "quality": quality, "v": 4}
+    fp = _fingerprint(d, params)
+    stamp = out.with_suffix(out.suffix + ".kosif.json")
+    if not force and out.exists() and stamp.exists():
+        try:
+            if json.loads(stamp.read_text(encoding="utf-8")).get("fingerprint") == fp:
+                print(json.dumps({"file": str(out), "cached": True, "mb": round(out.stat().st_size / 1e6, 2)}, ensure_ascii=False))
+                return out
+        except (OSError, ValueError):
+            pass
     t0 = time.perf_counter()
+    rep = {}
     if use_hf:
         if not cmd:
             raise SystemExit("HyperFrames is not installed here")
@@ -219,11 +312,13 @@ def render(name: str, engine: str, quality: str, fps: int | None, out: Path | No
             raise SystemExit(f"hyperframes render failed ({r.returncode})")
     else:
         import film
-        film.film_animate(str(index), out, fps=fps or _fps(index), seconds=duration_of(index), size=_size(index), blur=blur,
-                          shutter=shutter, stack=stack)
+        rep = film.film_animate(str(index), out, fps=fps or _fps(index), seconds=duration_of(index), size=size, blur=blur,
+                                shutter=shutter, stack=stack, workers=workers, capture=capture, preset=preset, crf=crf, scale=scale)
         mux_audio(index, out)
-    print(json.dumps({"file": str(out), "engine": "hyperframes" if use_hf else "studio", "blur": blur, "seconds": round(time.perf_counter() - t0, 1),
-                      "mb": round(out.stat().st_size / 1e6, 2)}, ensure_ascii=False))
+    info = {"file": str(out), "engine": "hyperframes" if use_hf else "studio", "draft": draft, "blur": blur, "workers": rep.get("workers"),
+            "frames": rep.get("frames"), "seconds": round(time.perf_counter() - t0, 1), "mb": round(out.stat().st_size / 1e6, 2)}
+    stamp.write_text(json.dumps({"fingerprint": fp, **info, "params": params}, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(json.dumps(info, ensure_ascii=False))
     return out
 
 
@@ -247,7 +342,7 @@ def mux_audio(index: Path, video: Path):
     if not clips or not shutil.which("ffmpeg"):
         return
     dur = duration_of(index)
-    args = ["ffmpeg", "-y", "-v", "error", "-i", str(video)]
+    args = ["ffmpeg", "-y", "-v", "info", "-hide_banner", "-nostats", "-i", str(video)]
     filters, labels = [], []
     for i, (f, start, d, vol, fo, fi, _role) in enumerate(clips):
         args += ["-i", str(f)]
@@ -270,7 +365,17 @@ def mux_audio(index: Path, video: Path):
                + "[duck][vm]amix=inputs=2:normalize=0[mix]")
     else:
         mix = f"{''.join(labels)}amix=inputs={len(clips)}:normalize=0[mix]" if len(clips) > 1 else f"{labels[0]}anull[mix]"
-    mix += ";[mix]loudnorm=I=-14:TP=-1:LRA=11[aout]"
+    # two-pass loudness: measure the mix first, then normalise linearly with the measured values. One-pass loudnorm
+    # (dynamic mode) overshoots on short films — a 5 s clip came out at -12.1 LUFS instead of -14.
+    norm = "loudnorm=I=-14:TP=-1:LRA=11"
+    meas = subprocess.run([*args, "-filter_complex", ";".join(filters + [mix + f";[mix]{norm}:print_format=json[aout]"]), "-map", "[aout]",
+                           "-t", str(dur), "-f", "null", "-"], capture_output=True, text=True)
+    m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", meas.stderr or "")
+    if m:
+        v = json.loads(m.group(0))
+        norm += (f":measured_I={v['input_i']}:measured_TP={v['input_tp']}:measured_LRA={v['input_lra']}"
+                 f":measured_thresh={v['input_thresh']}:offset={v['target_offset']}:linear=true")
+    mix += f";[mix]{norm}[aout]"
     tmp = video.with_suffix(".tmp.mp4")
     args += ["-filter_complex", ";".join(filters + [mix]), "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-ar", "48000",
              "-t", str(dur), "-movflags", "+faststart", str(tmp)]
@@ -298,18 +403,16 @@ def measure(film_path: Path, fps: int = 15) -> dict:
     near-still frames, the peak, the mean, and the longest freeze. The motion-director floor: little stillness,
     no single huge jump, something always moving."""
     import numpy as np
-    from PIL import Image
-    tmp = Path(tempfile.mkdtemp(prefix="kosif_me_"))
-    subprocess.run(["ffmpeg", "-v", "error", "-i", str(film_path), "-vf", f"fps={fps},scale=320:-2", str(tmp / "f_%05d.png")], check=True)
-    files = sorted(tmp.glob("f_*.png"))
-    prev, energy = None, []
-    for f in files:
-        a = np.asarray(Image.open(f).convert("L")).astype(np.float32)
+    import qa
+    prev, energy, nframes = None, [], 0
+    for g in qa._frames(film_path, fps, 320):                 # streamed grey frames: no temp files, no PNG round-trip
+        a = g.astype(np.float32)
+        nframes += 1
         if prev is not None:
             energy.append(float(np.abs(a - prev).mean()))
         prev = a
-    shutil.rmtree(tmp, ignore_errors=True)
-    e = np.array(energy)
+    files = range(nframes)
+    e = np.array(energy if energy else [0.0])
     still = e < 0.6
     longest, run = 0, 0
     for s in still:
@@ -343,6 +446,7 @@ def main():
     p.add_argument("--size", default="1920x1080"); p.add_argument("--title", default="")
     p.add_argument("--3d", dest="three_d", action="store_true", help="a cinematic Three.js project on the three-kit (bundle it before rendering)")
     p.add_argument("--canvas", action="store_true", help="the canvas route: one index.html, one canvas, window.seek(t)")
+    p.add_argument("--lab", action="store_true", help="the product-lab route: plush 3D characters, HUD callouts, a lens that walks the circle (lab-kit)")
     p = sub.add_parser("frames"); p.add_argument("project"); p.add_argument("--times", default="0.5,2,4,6,8"); p.add_argument("--out")
     p = sub.add_parser("check"); p.add_argument("project")
     p = sub.add_parser("render"); p.add_argument("project"); p.add_argument("--engine", default="auto", choices=["auto", "hyperframes", "studio"])
@@ -350,9 +454,17 @@ def main():
     p.add_argument("--blur", type=int, default=1, help="sub-frames per frame for pages that implement window.__blur (studio engine)")
     p.add_argument("--shutter", type=float, default=0.5, help="exposure in frames: 0.5 = 180° shutter; 30 at 30 fps = a 1 s long exposure")
     p.add_argument("--stack", default="average", choices=["average", "lighten"], help="lighten = star trails / light painting")
+    p.add_argument("--workers", type=int, default=0, help="browsers rendering in parallel (0 = one per core, up to 4)")
+    p.add_argument("--draft", action="store_true", help="review cut: half size, 15 fps, ultrafast, JPEG capture")
+    p.add_argument("--force", action="store_true", help="render even when sources and parameters are unchanged")
+    p.add_argument("--capture", choices=["png", "jpeg"], help="frame grab format (jpeg ≈ 2× faster)")
+    p.add_argument("--preset", help="libx264 preset"); p.add_argument("--crf", type=int)
+    p = sub.add_parser("preview", help="= render --draft: a quick review cut (NAME.draft.mp4)")
+    p.add_argument("project"); p.add_argument("--out"); p.add_argument("--workers", type=int, default=0); p.add_argument("--fps", type=int); p.add_argument("--force", action="store_true")
     p = sub.add_parser("measure"); p.add_argument("film"); p.add_argument("--fps", type=int, default=15)
     sub.add_parser("doctor")
     p = sub.add_parser("sync"); p.add_argument("project")
+    sub.add_parser("kit-bundle", help="rebuild kit/three-kit.bundle.js with esbuild after editing three-kit.js")
     p = sub.add_parser("bundle"); p.add_argument("project"); p.add_argument("--entry", default="src/main.js"); p.add_argument("--out", default="assets/main.bundle.js")
     p = sub.add_parser("lint"); p.add_argument("project")
     p = sub.add_parser("sheet"); p.add_argument("film"); p.add_argument("--at", type=float); p.add_argument("--out")
@@ -422,16 +534,21 @@ def main():
         elif a.cmd == "footage":
             print(json.dumps(qa.footage(Path(a.video), Path(a.out), a.start, a.dur, a.width, a.fps), ensure_ascii=False, indent=1))
         return
-    if a.cmd == "bundle":
+    if a.cmd == "kit-bundle":
+        kit_bundle()
+    elif a.cmd == "bundle":
         bundle(a.project, a.entry, a.out)
     elif a.cmd == "new":
-        new(a.name, a.seconds, a.fps, a.size, a.title, a.three_d, a.canvas)
+        new(a.name, a.seconds, a.fps, a.size, a.title, a.three_d, a.canvas, a.lab)
     elif a.cmd == "frames":
         frames(a.project, [float(v) for v in a.times.split(",")], Path(a.out) if a.out else None)
     elif a.cmd == "check":
         sys.exit(check(a.project))
     elif a.cmd == "render":
-        render(a.project, a.engine, a.quality, a.fps, Path(a.out) if a.out else None, a.blur, a.shutter, a.stack)
+        render(a.project, a.engine, a.quality, a.fps, Path(a.out) if a.out else None, a.blur, a.shutter, a.stack,
+               a.workers, a.draft, a.force, a.capture, a.preset, a.crf)
+    elif a.cmd == "preview":
+        render(a.project, "studio", "looks", a.fps, Path(a.out) if a.out else None, workers=a.workers, draft=True, force=a.force)
     elif a.cmd == "measure":
         measure(Path(a.film), a.fps)
     elif a.cmd == "doctor":

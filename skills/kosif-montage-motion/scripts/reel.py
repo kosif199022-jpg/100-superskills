@@ -1,7 +1,7 @@
 """KOSIF reel — one command from a raw talking clip to a finished vertical short.
 
     python reel.py CLIP.mp4 --out FINAL.mp4 [--size 1080x1920] [--model large-v3|small] [--music auto|none|score.wav]
-                   [--style reels|cinema|punchy] [--no-decaption] [--no-captions] [--credit "insta: name"]
+                   [--style reels|cinema|punchy] [--no-decaption] [--no-captions] [--credit "insta: name"] [--transcript NAME.words.json]
 
 1 transcribe (faster-whisper, word times) → 2 erase burned-in captions if any (decaption) → 3 restore: light temporal
 denoise, Lanczos upscale/reframe to the target, a gentle grade (cleaner blacks, highlight roll-off, warmer mids),
@@ -70,11 +70,27 @@ def has_music_bed(audio: Path, words: list[dict]) -> bool:
         seg = x[int(a * sr):int(b * sr)]
         if len(seg) > sr * 0.08:
             levels.append(20 * np.log10(np.sqrt(np.mean(seg ** 2)) + 1e-9))
-    return bool(levels) and float(np.median(levels)) > -42
+    if levels and max(levels) < -60:                                   # the pauses we could measure are silent: no bed
+        return False
+    if len(levels) >= 3:
+        return float(np.median(levels)) > -42
+    # word times without pauses (large models stretch each word to the next): judge by the quiet floor instead —
+    # speech alone falls below about −45 dBFS between words, a music bed keeps the floor up
+    hop = int(sr * 0.1)
+    mono = x.mean(1)
+    lv = [20 * np.log10(np.sqrt(np.mean(mono[i:i + hop] ** 2)) + 1e-9) for i in range(0, max(hop, len(mono) - hop), hop)]
+    lv = [v for v in lv if v > -80]                                    # ignore digital silence (fades, black tails)
+    return bool(lv) and float(np.percentile(lv, 10)) > -40
+
+
+def _raw_mix(src: Path, tmp: Path) -> Path:
+    raw = tmp / "raw.wav"
+    _run([FF, "-y", "-v", "error", "-i", str(src), "-vn", "-ac", "2", "-ar", "48000", str(raw)])
+    return raw
 
 
 def reel(src: Path, out: Path, size=(1080, 1920), model="large-v3", music="auto", style="reels", decap=True, captions=True,
-         credit: str | None = None) -> dict:
+         credit: str | None = None, transcript: Path | None = None) -> dict:
     import transcribe as T
     import montage
     import qa
@@ -84,29 +100,39 @@ def reel(src: Path, out: Path, size=(1080, 1920), model="large-v3", music="auto"
     info = _probe(src)
     W, H = size
     rep = {"source": str(src), "size": f"{W}x{H}"}
-    # 1 words
-    segs = T.transcribe(src, model)
+    # 1 + 2 together: words (whisper, CPU) and burned captions (OpenCV, CPU) are independent — run side by side
+    from concurrent.futures import ThreadPoolExecutor
+    base = src
+
+    def _asr():
+        return T.load_transcript(transcript, duration=info["dur"]) if transcript else T.transcribe(src, model)
+
+    def _decap():
+        import decaption as D
+        return D.decaption(src, tmp / "clean.mp4")
+    with ThreadPoolExecutor(2) as ex:
+        f_asr = ex.submit(_asr)
+        f_dec = ex.submit(_decap) if decap else None
+        segs = f_asr.result()
+        if f_dec is not None:
+            r = f_dec.result()
+            rep["decaption"] = {k: v for k, v in r.items() if k != "shots"}
+            base = tmp / "clean.mp4"
     T.write_all(segs, out.with_suffix(""))
     words = [w for s in segs for w in s["words"]]
     rep["transcript"] = [s["text"] for s in segs]
-    # 2 burned captions
-    base = src
-    if decap:
-        import decaption as D
-        r = D.decaption(src, tmp / "clean.mp4")
-        rep["decaption"] = {k: v for k, v in r.items() if k != "shots"}
-        base = tmp / "clean.mp4"
     # 3 restore + reframe (fill the target, centre crop)
     scale = f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H}"
+    # an intermediate that the caption pass re-encodes anyway: near-lossless and quick (crf 12 / fast), not slow
     _run([FF, "-y", "-v", "error", "-i", str(base), "-an", "-vf", RESTORE.format(scale=scale) + ",format=yuv420p",
-          "-c:v", "libx264", "-preset", "slow", "-crf", "15", "-r", f"{info['fps']:.5f}", str(tmp / "picture.mp4")])
+          "-c:v", "libx264", "-preset", "fast", "-crf", "12", "-r", f"{info['fps']:.5f}", str(tmp / "picture.mp4")])
     # 4 voice
     _run([FF, "-y", "-v", "error", "-i", str(src), "-vn", "-ac", "2", "-ar", "48000", "-af", VOICE, str(tmp / "voice.wav")])
     # 5 music
     bed = None
     if music not in ("none", "auto"):
         bed = Path(music)
-    elif music == "auto" and not has_music_bed(tmp / "voice.wav", words):
+    elif music == "auto" and not has_music_bed(_raw_mix(src, tmp), words):   # judged on the raw mix (denoising lowers a bed)
         import score as SC
         sc = SC.Score(90, info["dur"], "D", "minor", seed=9)
         b = info["dur"] / (60 / 90)
@@ -127,18 +153,25 @@ def reel(src: Path, out: Path, size=(1080, 1920), model="large-v3", music="auto"
     mixed = tmp / "mixed.mp4"
     _run([FF, "-y", "-v", "error", *ins, "-filter_complex", graph, "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac",
           "-b:a", "256k", "-ar", "48000", "-shortest", str(mixed)])
-    final_in = mixed
+    # captions and the credit line burn in one encode (each extra pass costs minutes and a generation)
+    vf = []
     if captions and words:
         spec = [{"start": s["start"], "end": s["end"], "text": s["text"], "words": s["words"]} for s in segs]
-        montage.burn(mixed, tmp / "captioned.mp4", spec, style)
-        final_in = tmp / "captioned.mp4"
+        ass_file = tmp / "caps.ass"
+        ass_file.write_text(montage.ass(spec, W, H, style), encoding="utf-8")
+        vf.append(f"ass='{ass_file.as_posix().replace(':', chr(92) + ':')}'")
     if credit:
-        safe = credit.replace(":", "\\:").replace("'", "")
-        _run([FF, "-y", "-v", "error", "-i", str(final_in), "-vf",
-              f"drawtext=text='{safe}':fontfile='C\:/Windows/Fonts/segoeui.ttf':fontsize={round(H * 0.013)}:fontcolor=white@0.5:x=(w-tw)/2:y=h*0.905,format=yuv420p",
-              "-c:v", "libx264", "-preset", "slow", "-crf", "15", "-c:a", "copy", str(out)])
+        import tools
+        credit_file = tmp / "credit.txt"                       # untrusted text stays out of the FFmpeg filter grammar
+        credit_file.write_text(credit[:300].replace("\n", " ").replace("\r", " "), encoding="utf-8")
+        fp = tools.font_path(arabic=any("\u0600" <= ch <= "\u06ff" for ch in credit))
+        font_opt = f":fontfile='{tools._ff_path(fp)}'" if fp else ""
+        vf.append(f"drawtext=textfile='{tools._ff_path(credit_file)}'{font_opt}:fontsize={round(H * 0.013)}:fontcolor=white@0.5:x=(w-tw)/2:y=h*0.905")
+    if vf:
+        _run([FF, "-y", "-v", "error", "-i", str(mixed), "-vf", ",".join(vf) + ",format=yuv420p", "-c:v", "libx264", "-preset", "medium",
+              "-crf", "16", "-c:a", "copy", "-movflags", "+faststart", str(out)])
     else:
-        shutil.copy2(final_in, out)
+        shutil.copy2(mixed, out)
     # 8 gate
     gate = qa.inspect(out)
     rep["gate"] = {k: gate[k] for k in ("ok", "issues", "warnings", "lufs", "true_peak")}
@@ -151,9 +184,10 @@ def main():
     ap.add_argument("clip"); ap.add_argument("--out", required=True); ap.add_argument("--size", default="1080x1920")
     ap.add_argument("--model", default="large-v3"); ap.add_argument("--music", default="auto"); ap.add_argument("--style", default="reels")
     ap.add_argument("--no-decaption", action="store_true"); ap.add_argument("--no-captions", action="store_true"); ap.add_argument("--credit")
+    ap.add_argument("--transcript", type=Path, help="a pre-timed NAME.words.json (a reel without Whisper installed)")
     a = ap.parse_args()
     W, H = (int(v) for v in a.size.lower().split("x"))
-    rep = reel(Path(a.clip), Path(a.out), (W, H), a.model, a.music, a.style, not a.no_decaption, not a.no_captions, a.credit)
+    rep = reel(Path(a.clip), Path(a.out), (W, H), a.model, a.music, a.style, not a.no_decaption, not a.no_captions, a.credit, a.transcript)
     print(json.dumps(rep, ensure_ascii=False, indent=1))
 
 
