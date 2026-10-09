@@ -16,11 +16,11 @@
 أو من النسخة المحلية:
 
 ```text
-/plugin marketplace add C:\Users\اغنام الوادي\Desktop\الاداة\100-superskills
+/plugin marketplace add PATH/TO/100-superskills
 /plugin install 100-superskills@superskills
 ```
 
-أو للتجربة: `claude --plugin-dir "C:\Users\اغنام الوادي\Desktop\الاداة\100-superskills"`. لـ claude.ai وClaude Desktop: ارفع الملفات من `dist/claude-ai-skills/`. التفاصيل في `INSTALL.ar.md`.
+أو للتجربة: `claude --plugin-dir "PATH/TO/100-superskills"`. لـ claude.ai وClaude Desktop: ارفع الملفات من `dist/claude-ai-skills/`. التفاصيل في `INSTALL.ar.md`.
 
 ## الفهرس
 

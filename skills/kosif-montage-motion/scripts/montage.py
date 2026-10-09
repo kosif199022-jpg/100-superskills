@@ -222,10 +222,24 @@ def grade_video(video: Path, out: Path, preset: str) -> Path:
 
 
 # ───────────────────────── captions ─────────────────────────
-STYLES = {  # font, size (per 1080 px of height), primary, highlight (ASS &HBBGGRR), outline, shadow, bottom margin (per 1920)
-    "reels": ("Noto Sans Arabic", 74, "&H00FFFFFF", "&H0059DEFF", 6, 3, 300),
-    "cinema": ("Noto Naskh Arabic", 46, "&H00EAEAEA", "&H00A8E6FF", 3, 2, 150),
-    "punchy": ("Noto Kufi Arabic", 72, "&H00FFFFFF", "&H00F8BD38", 8, 4, 330),
+def _style(font, size, prim, hi, outline, shadow, margin, **kw) -> dict:
+    """font, size (per 1080 px of the short side), primary, highlight (ASS &HAABBGGRR), outline, shadow, bottom margin
+    (per 1920 of the height); kw: max_words (on screen at once), pop (% scale of the spoken word), box (BorderStyle 3
+    opaque box behind the line), back (box colour), bold, pop_ms."""
+    return {"font": font, "size": size, "primary": prim, "highlight": hi, "outline": outline, "shadow": shadow, "margin": margin,
+            "max_words": kw.get("max_words", 6), "pop": kw.get("pop", 112), "box": kw.get("box", False), "back": kw.get("back", "&H80000000"),
+            "bold": kw.get("bold", True), "pop_ms": kw.get("pop_ms", 120), "ar": kw.get("ar", "")}
+
+
+STYLES = {
+    "reels": _style("Noto Sans Arabic", 74, "&H00FFFFFF", "&H0059DEFF", 6, 3, 300, ar="ريلز: أبيض، الكلمة المنطوقة صفراء وتنبض"),
+    "cinema": _style("Noto Naskh Arabic", 46, "&H00EAEAEA", "&H00A8E6FF", 3, 2, 150, pop=104, ar="سينما: نسخ هادئ، تمييز خفيف"),
+    "punchy": _style("Noto Kufi Arabic", 72, "&H00FFFFFF", "&H00F8BD38", 8, 4, 330, pop=116, ar="قوي: كوفي عريض وحد سميك"),
+    # v6 (from the TikTok / Reels wave and the Remotion caption rules: 1–4 words at a time, the spoken word alone pops)
+    "tiktok": _style("Noto Kufi Arabic", 84, "&H00FFFFFF", "&H004DE0FF", 10, 0, 420, max_words=4, pop=120, pop_ms=90, ar="تيك توك: 4 كلمات كحد أقصى، حد أسود سميك"),
+    "hormozi": _style("Noto Kufi Arabic", 96, "&H00FFFFFF", "&H0088FF39", 9, 0, 440, max_words=1, pop=118, pop_ms=80, ar="كلمة كلمة: كل كلمة وحدها، أخضر فاقع"),
+    "boxed": _style("Noto Sans Arabic", 66, "&H00FFFFFF", "&H004DE0FF", 2, 0, 300, max_words=5, pop=108, box=True, back="&H66000000", ar="صندوق: خلفية داكنة شبه شفافة خلف السطر"),
+    "minimal": _style("Noto Naskh Arabic", 54, "&H00F2F2F2", "&H00F2F2F2", 2, 1, 220, max_words=7, pop=100, bold=False, ar="بسيط: بلا نبض ولا لون، للمقابلات"),
 }
 
 
@@ -254,28 +268,32 @@ def word_times(cap: dict) -> list[tuple[str, float, float]]:
     return [(w, float(edges[i]), float(edges[i + 1])) for i, w in enumerate(words)]
 
 
-def ass(spec: list[dict], W: int, H: int, style: str = "reels", max_words: int = 6) -> str:
+def ass(spec: list[dict], W: int, H: int, style: str = "reels", max_words: int | None = None) -> str:
     # Encoding -1 lets libass detect the paragraph direction: with a fixed charset the base direction is left-to-right and
     # an Arabic line split by a highlight override comes out in the wrong word order
-    font, size, prim, hi, outl, shad, mv = STYLES.get(style, STYLES["reels"])
+    st = STYLES.get(style, STYLES["reels"])
+    font, size, prim, hi, outl, shad, mv = st["font"], st["size"], st["primary"], st["highlight"], st["outline"], st["shadow"], st["margin"]
+    max_words = max(1, int(max_words or st["max_words"]))
     k = H / 1080 if W >= H else W / 1080                     # sizes scale with the short side
     fs, ol, sh, margin = round(size * k), max(1, round(outl * k)), round(shad * k), round(mv * H / 1920)
+    border = 3 if st["box"] else 1
+    pop, pop_ms = int(st["pop"]), int(st["pop_ms"])
     head = (f"[Script Info]\nScriptType: v4.00+\nPlayResX: {W}\nPlayResY: {H}\nScaledBorderAndShadow: yes\nWrapStyle: 2\n\n"
             "[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, "
             "ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-            f"Style: Cap,{font},{fs},{prim},{hi},&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,{ol},{sh},2,{round(W * 0.06)},{round(W * 0.06)},{margin},-1\n\n"
+            f"Style: Cap,{font},{fs},{prim},{hi},&H00000000,{st['back']},{-1 if st['bold'] else 0},0,0,0,100,100,0,0,{border},{ol},{sh},2,{round(W * 0.06)},{round(W * 0.06)},{margin},-1\n\n"
             "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
     ev = []
     for cap in _norm_caps(spec):
         wt = word_times(cap)
-        for g in range(0, len(wt), max_words):               # 5–7 words on screen at most
+        for g in range(0, len(wt), max_words):               # 1–7 words on screen at most (the style decides)
             chunk = wt[g:g + max_words]
             for i, (w, a, b) in enumerate(chunk):
                 end = chunk[i + 1][1] if i + 1 < len(chunk) else b
                 parts = []
                 for j, (x, _, _) in enumerate(chunk):
-                    if j == i:   # the spoken word: highlight colour and a quick pop (112 % → 100 % in 120 ms)
-                        parts.append(f"{{\\1c{hi}\\fscx112\\fscy112\\t(0,120,\\fscx100\\fscy100)}}{x}{{\\r}}")
+                    if j == i and (pop > 100 or hi != prim):   # the spoken word: highlight colour and a quick pop (pop % → 100 %)
+                        parts.append(f"{{\\1c{hi}\\fscx{pop}\\fscy{pop}\\t(0,{pop_ms},\\fscx100\\fscy100)}}{x}{{\\r}}")
                     else:
                         parts.append(x)
                 ev.append(f"Dialogue: 0,{_ass_time(a)},{_ass_time(end)},Cap,,0,0,0,,{' '.join(parts)}")
@@ -313,7 +331,10 @@ def main():
         v = Path(a.video); out = Path(a.out) if a.out else v.with_stem(v.stem + "_captions")
         print(burn(v, out, json.loads(Path(a.spec).read_text(encoding="utf-8")), a.style))
     else:
-        print("\n".join(GRADES))
+        print("grades:", ", ".join(GRADES))
+        print("caption styles:")
+        for k, st in STYLES.items():
+            print(f"  {k:<8} {st['ar']}  (≤ {st['max_words']} كلمات)")
 
 
 if __name__ == "__main__":

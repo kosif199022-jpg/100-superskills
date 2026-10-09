@@ -52,12 +52,17 @@ class Encoder:
 
     def close(self):
         self.p.stdin.close()
-        self.p.wait()
+        rc = self.p.wait()
+        if rc != 0:
+            raise RuntimeError(f"ffmpeg encoder exited with {rc} after {self.n} frames")
 
 
 def drawing_jobs(source: str):
     """Paint jobs for a scene name or a code file, exactly as the studio plays them."""
-    import studio
+    try:
+        import studio
+    except ImportError:
+        raise SystemExit("film drawing needs KOSIF Studio (studio.py) next to film.py — the skill package has only the animate mode")
     src = Path(source)
     if src.suffix.lower() in studio.IMAGE_TYPES and src.exists():         # an image: its own code, drawn exactly
         work = Path(tempfile.mkdtemp(prefix="kosif_film_img_"))

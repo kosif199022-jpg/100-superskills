@@ -5,6 +5,10 @@ KOSIF Think runtime, request-bound receipts and an authorized external executor.
 No third-party skills or executables are automatically loaded or run.
 """
 from __future__ import annotations
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):
+    if hasattr(_s, "reconfigure"):
+        _s.reconfigure(encoding="utf-8", errors="replace")   # Windows consoles default to a legacy code page
 import argparse
 import hashlib
 import json
@@ -115,7 +119,7 @@ def plan(task: str, mode: str = "pro", media: str | None = None, full_pro_receip
                   "audio_target_lufs": -14, "true_peak_ceiling_dbtp": -1,
                   "arabic_text_review": True, "actual_render_required_for_claim": True},
         "external_skills": "KOSIF Atlas finalists only after provenance/license/risk screening; no bulk 15k load",
-        "physics_scope": "illustrative 2D pin-jointed axial truss only; not certified 3D FEA" if is_structural else None,
+        "physics_scope": "illustrative 2D/3D pin-jointed axial truss only (no bending, buckling or material nonlinearity); not certified FEA" if is_structural else None,
         "side_effects_performed": False,
     }
     return result

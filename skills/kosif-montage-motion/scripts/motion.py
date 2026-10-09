@@ -20,6 +20,10 @@ timelines registered in window.__timelines (seconds), assets/motion-kit.js for t
 vapour, camera moves, grain and vignette, and the kit's shim so the same file renders through either engine.
 """
 from __future__ import annotations
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):
+    if hasattr(_s, "reconfigure"):
+        _s.reconfigure(encoding="utf-8", errors="replace")   # Windows consoles default to a legacy code page
 
 import argparse
 import json
@@ -91,6 +95,27 @@ def project_dir(name: str) -> Path:
     return p if p.is_dir() else PROJECTS / p.name
 
 
+def safe_name(name: str) -> str:
+    """A project name that stays inside PROJECTS: the last path part, letters/digits/Arabic/_/- only, never empty or dotted."""
+    base = Path(str(name).replace("\\", "/")).name
+    slug = re.sub(r"[^\w\-\u0600-\u06FF]+", "_", base, flags=re.UNICODE).strip("._-")
+    if not slug or slug in (".", ".."):
+        raise SystemExit(f"invalid project name: {name!r}")
+    return slug
+
+
+def html_text(s) -> str:
+    """Text for an HTML template: escaped, so a title can never become markup or script."""
+    import html as _h
+    return _h.escape(str(s), quote=True)
+
+
+def json_for_script(obj) -> str:
+    """JSON safe inside a <script> element: '</' cannot close the tag."""
+    import json as _j
+    return _j.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
+
+
 def duration_of(index: Path) -> float:
     import re
     m = re.search(r'data-composition-id="[^"]+"[^>]*data-duration="([\d.]+)"', index.read_text(encoding="utf-8"))
@@ -104,10 +129,14 @@ SHAPE_KIT = HERE / "kit" / "shape-kit.js"                          # the product
 def new(name: str, seconds: float, fps: int, size: str, title: str, three_d: bool = False, canvas: bool = False, lab: bool = False) -> Path:
     """A project from the flat template, or (three_d) from the cinematic 3D template: src/main.js on the three-kit,
     bundled by `motion.py bundle` before rendering."""
+    import html as _html
+    name = safe_name(name)
     d = PROJECTS / name
     (d / "assets").mkdir(parents=True, exist_ok=True)
     w, h = (int(v) for v in size.lower().split("x"))
-    fill = lambda s: (s.replace("{{TITLE}}", title or name).replace("{{W}}", str(w)).replace("{{H}}", str(h))
+    if not (16 <= w <= 7680 and 16 <= h <= 7680) or not (0.1 <= float(seconds) <= 3600) or not (1 <= int(fps) <= 120):
+        raise SystemExit(f"out of range: size {w}x{h}, seconds {seconds}, fps {fps}")
+    fill = lambda s: (s.replace("{{TITLE}}", _html.escape(title or name, quote=True)).replace("{{W}}", str(w)).replace("{{H}}", str(h))
                        .replace("{{SECONDS}}", str(seconds)).replace("{{FPS}}", str(fps)))
     if lab:                                                    # the lab route: three-kit bundle + lab-kit, HUD, orbit walk, two plush characters
         tdir = TEMPLATE.parent / "lab"
@@ -152,6 +181,11 @@ def sync_assets(d: Path):
         # refresh the kits a project uses — present already, or named by its page (examples ship without the copies)
         if src.exists() and ((d / "assets" / name).exists() or f"assets/{name}" in html):
             shutil.copy2(src, d / "assets" / name)
+    fonts = HERE / "kit" / "fonts"
+    for fname in sorted(set(re.findall(r"assets/fonts/([\w.-]+\.woff2)", html))):  # the kit's fonts a page names (examples ship without them)
+        if (fonts / fname).exists() and not (d / "assets" / "fonts" / fname).exists():
+            (d / "assets" / "fonts").mkdir(parents=True, exist_ok=True)
+            shutil.copy2(fonts / fname, d / "assets" / "fonts" / fname)
 
 
 def _esbuild_cmd(esb: Path) -> list[str]:

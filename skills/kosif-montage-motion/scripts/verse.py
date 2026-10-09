@@ -168,6 +168,38 @@ OPENERS = {norm(w) for w in ("اللهم يا إلا ثم لكن حتى بل أ�
                               "اجعل اغفر ارحم اهدنا اهدني ارزقنا ارزقني تقبل اكتب اشف احفظ ثبت يسر بارك أعنا").split()}  # a dua's imperatives
 
 
+# meaning → symbol (Voice2Motion's idea: the picture follows what is said, not only how loud). Roots are compared after
+# norm() and after stripping the attached particles و ف ب ل ال; English words by prefix.
+CONCEPTS = {
+    "sun": "شمس صباح نهار شروق ضوء نور ضحى sun sunny morning light bright dawn",
+    "moon": "ليل ليله قمر نجوم نجم مساء سهر night moon star evening dark",
+    "heart": "قلب قلوب حب حبيب روح شوق غرام love heart soul",
+    "clock": "ساعه وقت لحظه دقيقه زمن عمر ايام time hour minute moment clock",
+    "money": "فلوس مال دولار ريال جنيه مليون ميزانيه ثمن سعر money dollar price budget refund cash",
+    "trophy": "نجاح ناجح ناجحه فوز فاز حلم احلام هدف قمه انجاز success win dream goal champion",
+    "road": "طريق خطوه خطوات درب رحله سفر مشوار طرق path road step journey travel way",
+    "question": "ليه ازاي كيف ماذا لماذا سؤال why how what question",
+    "check": "تم خلاص اكيد تاكيد مستجاب امين حقق تحقق done confirmed yes ready",
+    "home": "بيت وطن دار اهل غربه home house family",
+    "rain": "مطر غيم سحاب ماء بحر موج نهر rain cloud water sea river",
+    "light": "اللهم يارب رب دعاء الله رحمه فرج جبر prayer pray hope",
+}
+_ROOTS = {k: v.split() for k, v in CONCEPTS.items()}
+
+
+def concept_of(word: str) -> str | None:
+    w = norm(word)
+    cands = {w}
+    for pre in ("وال", "فال", "بال", "لل", "ال", "و", "ف", "ب", "ل"):
+        if w.startswith(pre) and len(w) - len(pre) >= 2:
+            cands.add(w[len(pre):])
+    for kind, roots in _ROOTS.items():
+        for r in roots:
+            if any(c == r or (c.startswith(r) and (len(r) >= 4 or len(c) - len(r) <= 2)) for c in cands):   # قلبي، قلبك، قلبنا
+                return kind
+    return None
+
+
 def _break_bonus(words: list[dict], i: int, stopn: set[str]) -> float:
     """How good a line break before words[i] is: a pause, punctuation, a phrase opener (a و/ف-clause, اللهم، يا، إلا, a
     dua's imperative) — large ASR models stretch words over the pauses, so the grammar has to help. Never after a
@@ -287,6 +319,25 @@ def plan(lines: list[list[dict]], stress: list[float], duration: float, W: int, 
         out_lines.append({"t": round(ln[0]["start"], 3), "end": round(min(nxt - 0.06, max(hold, ln[-1]["end"] + 0.3)), 3), "size": size * (1.22 if i == payoff else 1),
                           "payoff": i == payoff, "section": max(s["i"] for s in sections if s["t"] <= ln[0]["start"] + 1e-6),
                           "words": [{"t": round(w["start"], 3), "text": w["text"], "key": w is kw} for w in ln]})
+    # symbols by meaning: the keyword's concept first, else the line's first; a number becomes a counter. Never the same
+    # symbol twice in a row, never closer than 2.5 s — a symbol per line would be wallpaper
+    last_kind, last_t, last_m = None, -9.0, None
+    for ol, ln in zip(out_lines, lines):
+        num = next((w for w in ln if re.fullmatch(r"[0-9٠-٩]+([.,][0-9٠-٩]+)?", w["text"].strip("%٪+"))), None)
+        kw = next((w for w in ol["words"] if w["key"]), None)
+        kind = (concept_of(kw["text"]) if kw else None) or next((k for k in (concept_of(w["text"]) for w in ln) if k), None)
+        if num is not None:
+            kind = "count"
+        strong = kind == "count" or ol["payoff"]                      # a number said, or the payoff: always shown
+        if kind and (strong or (kind != last_kind and ol["t"] - last_t >= 2.5)):
+            m = {"kind": kind, "t": round(ln[0]["start"], 3), "end": ol["end"]}
+            if kind == "count":
+                m["value"] = num["text"].translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")).strip("%٪+")
+                m["t"] = round(num["start"] - 0.25, 3)
+            if strong and last_m is not None and last_m["end"] > m["t"] - 0.4:
+                last_m["end"] = round(max(last_m["t"] + 0.4, m["t"] - 0.4), 3)   # the earlier symbol is gone (0.35 s fade) before this one starts
+            ol["motif"] = m
+            last_kind, last_t, last_m = kind, ol["t"], m
     first = lines[0][0]["start"] if lines else duration
     last = lines[-1][-1]["end"] if lines else 0.0
     cards = {"title": {"t": 0.25, "end": round(first - 0.35, 3)} if title and first >= 1.5 else None,
@@ -348,7 +399,7 @@ def verse(audio: Path, name: str, text: Path | None = None, words_json: Path | N
     from direct import apply_fixes, word_stress
     audio = Path(audio)
     W, H = size
-    proj = MO.PROJECTS / name
+    proj = MO.PROJECTS / MO.safe_name(name)
     (proj / "assets").mkdir(parents=True, exist_ok=True)
     song = proj / "assets" / "song.wav"
     _run([FF, "-y", "-v", "error", "-i", str(audio), "-vn", "-ac", "2", "-ar", "48000", str(song)])
@@ -409,10 +460,10 @@ def verse(audio: Path, name: str, text: Path | None = None, words_json: Path | N
     spec = {"W": W, "H": H, "fps": fps, "duration": round(dur, 3), "mood": mood if mood in MOODS else "night", "accent": accent,
             "title": title, "sub": sub, "credit": credit, "images": imgs, "timing": timing, **pl}
     (proj / "verse.json").write_text(json.dumps(spec, ensure_ascii=False, indent=1), encoding="utf-8")
-    (proj / "verse.js").write_text("window.VERSE = " + json.dumps(spec, ensure_ascii=False) + ";\n", encoding="utf-8")
+    (proj / "verse.js").write_text("window.VERSE = " + MO.json_for_script(spec) + ";\n", encoding="utf-8")
     (proj / "sound.js").write_text("window.SOUND = " + json.dumps(sound(song, fps)) + ";\n", encoding="utf-8")
     html = TEMPLATE.read_text(encoding="utf-8").replace("{{MUSIC}}", extra_audio)
-    for k, v in {"{{W}}": W, "{{H}}": H, "{{SECONDS}}": round(dur, 3), "{{FPS}}": fps, "{{TITLE}}": title or name}.items():
+    for k, v in {"{{W}}": W, "{{H}}": H, "{{SECONDS}}": round(dur, 3), "{{FPS}}": fps, "{{TITLE}}": MO.html_text(title or name)}.items():
         html = html.replace(k, str(v))
     (proj / "index.html").write_text(html, encoding="utf-8")
     MO.sync_assets(proj)
