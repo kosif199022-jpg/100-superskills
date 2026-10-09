@@ -132,11 +132,66 @@ def pick(e: np.ndarray, fps: float, dur: float, used: list[tuple[float, float]],
     return round(best_s, 3)
 
 
+IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+VIDEO_EXT = {".mp4", ".mov", ".webm", ".mkv", ".m4v", ".avi", ".gif"}
+
+
+def is_image(p: Path) -> bool:
+    return Path(p).suffix.lower() in IMAGE_EXT
+
+
+def gather(items: list[Path]) -> list[Path]:
+    """Files and folders → media for the cut: a folder gives its videos and images (an `.edit.mp4` copy from
+    `kmotion fetch` replaces its original), in name order."""
+    out: list[Path] = []
+    for it in map(Path, items):
+        if it.is_dir():
+            files = sorted(f for f in it.iterdir() if f.is_file() and f.suffix.lower() in IMAGE_EXT | VIDEO_EXT)
+            edits = {f.name[: -len(".edit.mp4")] for f in files if f.name.endswith(".edit.mp4")}
+            out += [f for f in files if f.name.endswith(".edit.mp4") or f.stem not in edits]
+        elif it.exists():
+            out.append(it)
+    return out
+
+
+def _dims(p: Path) -> tuple[int, int]:
+    r = subprocess.run([qa.FP, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", str(p)],
+                       capture_output=True, text=True)
+    try:
+        w, h = (int(x) for x in r.stdout.strip().split("x")[:2])
+        return w, h
+    except ValueError:
+        return 0, 0
+
+
+def _fit_chain(src: Path, W: int, H: int) -> list[str]:
+    """The source into a 2W×2H canvas: filled (cropped) when its shape is close to the frame's, else shown WHOLE over a
+    blurred, dimmed copy of itself — a landscape pin in a vertical reel keeps its edges and its text."""
+    w, h = _dims(src)
+    mismatch = max((w / h) / (W / H), (W / H) / (w / h)) if w and h else 1.0
+    if mismatch <= 1.35:
+        return [f"scale={2 * W}:{2 * H}:force_original_aspect_ratio=increase:flags=lanczos", f"crop={2 * W}:{2 * H}", "setsar=1"]
+    return [f"split=2[bg][fg];[bg]scale={W // 4}:{H // 4}:force_original_aspect_ratio=increase,crop={W // 4}:{H // 4},boxblur=8:2,"
+            f"eq=brightness=-0.12:saturation=0.8,scale={2 * W}:{2 * H}[bgs];[fg]scale={2 * W}:{2 * H}:force_original_aspect_ratio=decrease:flags=lanczos[fgs];"
+            f"[bgs][fgs]overlay=(W-w)/2:(H-h)/2,setsar=1"]
+
+
+def _still(img: Path, dur: float, out: Path, W: int, H: int, fps: int, grade: str, k: int):
+    """A photo as a shot: fill-crop, a slow push in (or out, alternating) of 7 % over the shot — never a frozen frame."""
+    zin = k % 2 == 0
+    z = f"(1+0.07*{'t' if zin else f'({dur:.3f}-t)'}/{max(dur, 0.1):.3f})"
+    vf = [*_fit_chain(img, W, H),
+          f"scale=w='trunc({2 * W}*{z}/2)*2':h='trunc({2 * H}*{z}/2)*2':eval=frame", f"crop={2 * W}:{2 * H}",
+          f"scale={W}:{H}:flags=lanczos", f"fps={fps}", GRADES.get(grade, "null"), "format=yuv420p"]
+    _run([FF, "-y", "-v", "error", "-loop", "1", "-framerate", str(fps), "-t", f"{dur:.3f}", "-i", str(img), "-vf", ",".join(vf),
+          "-c:v", "libx264", "-preset", "medium", "-crf", "17", "-r", str(fps), "-t", f"{dur:.3f}", str(out)])
+
+
 # ───────────────────────── render ─────────────────────────
 def _segment(clip: Path, start: float, dur: float, out: Path, W: int, H: int, fps: int, grade: str, punches: list[float]):
     """One shot: fill-crop to W×H (rendered at 2× so the zoom punch has half-pixel steps), punches that jump to +9 % and
     decay with a 0.32 s time constant (a hit, not a pulse), the grade, CFR."""
-    vf = [f"scale={2 * W}:{2 * H}:force_original_aspect_ratio=increase:flags=lanczos", f"crop={2 * W}:{2 * H}", "setsar=1"]
+    vf = _fit_chain(clip, W, H)
     if punches:
         z = "+".join(f"0.09*exp(-(t-{p:.3f})/0.32)*gte(t,{p:.3f})" for p in punches)
         vf += [f"scale=w='trunc({2 * W}*(1+{z})/2)*2':h='trunc({2 * H}*(1+{z})/2)*2':eval=frame", f"crop={2 * W}:{2 * H}"]
@@ -148,26 +203,32 @@ def _segment(clip: Path, start: float, dur: float, out: Path, W: int, H: int, fp
 def cut(clips: list[Path], music: Path, out: Path, seconds: float | None = None, ratio: str = "9:16", fps: int = 30,
         grade: str = "teal_orange", punch: bool = True, voice: Path | None = None, captions: Path | None = None,
         keep_audio: bool = False, style: str = "reels") -> dict:
-    clips = [Path(c) for c in clips]
+    clips = gather([Path(c) for c in clips])
+    if not clips:
+        raise SystemExit("no videos or images to cut")
     W, H = RATIOS.get(ratio, RATIOS["9:16"])
     bt = qa.beats(Path(music))
     total_music = bt["duration"]
     seconds = round(min(seconds or total_music, total_music), 3)
     shots = plan(bt["beats"], bt["downbeats"], seconds, bt["beat"])
     tmp = Path(tempfile.mkdtemp(prefix="kosif_montage_"))
-    lens = [_duration(c) for c in clips]
-    ens = [energy(c) for c in clips]
+    lens = [1e9 if is_image(c) else _duration(c) for c in clips]
+    ens = [np.zeros(1, np.float32) if is_image(c) else energy(c) for c in clips]
     used: list[list[tuple[float, float]]] = [[] for _ in clips]
     downs = [d for d in bt["downbeats"] if d < seconds]
     parts, log = [], []
     for n, (a, b) in enumerate(shots):
         ci = n % len(clips)                                  # round robin keeps every clip in play
         d = b - a
-        s = pick(ens[ci], 6.0, d, used[ci], lens[ci])
+        img = is_image(clips[ci])
+        s = 0.0 if img else pick(ens[ci], 6.0, d, used[ci], lens[ci])
         used[ci].append((s, s + d))
-        hits = [round(x - a, 3) for x in downs if a - 1e-3 <= x < b - 0.12] if punch else []
+        hits = [round(x - a, 3) for x in downs if a - 1e-3 <= x < b - 0.12] if punch and not img else []
         seg = tmp / f"s{n:03d}.mp4"
-        _segment(clips[ci], s, d, seg, W, H, fps, grade, hits)
+        if img:
+            _still(clips[ci], d, seg, W, H, fps, grade, n)
+        else:
+            _segment(clips[ci], s, d, seg, W, H, fps, grade, hits)
         parts.append(seg)
         log.append({"shot": n, "at": round(a, 3), "dur": round(d, 3), "clip": clips[ci].name, "from": s, "punches": hits})
     lst = tmp / "list.txt"
@@ -210,6 +271,19 @@ def cut(clips: list[Path], music: Path, out: Path, seconds: float | None = None,
     else:
         shutil.copy2(mixed, out)
     rep = {"file": str(out), "seconds": seconds, "bpm": bt["bpm"], "shots": len(shots), "ratio": ratio, "grade": grade, "plan": log}
+    used_names = {lg["clip"] for lg in log}                  # sources of fetched media (kmotion fetch) → the film's credits
+    credits = []
+    for folder in {c.parent for c in clips}:
+        cf = folder / "fetch-credits.json"
+        if cf.exists():
+            for row in json.loads(cf.read_text(encoding="utf-8")):
+                names = {Path(row.get("file", "")).name, Path(row.get("edit", "")).name}
+                if names & used_names:
+                    credits.append(f"{row.get('title') or row.get('id')} — {row.get('creator') or 'creator not listed'} — {row.get('source')}")
+    if credits:
+        cfile = out.with_suffix(".credits.txt")
+        cfile.write_text("\n".join(credits) + "\n", encoding="utf-8")
+        rep["credits"] = str(cfile)
     out.with_suffix(".montage.json").write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding="utf-8")
     return rep
 

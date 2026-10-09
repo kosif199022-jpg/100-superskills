@@ -1,7 +1,9 @@
 ---
 name: kosif-montage-motion
-description: "KOSIF Montage & Motion v6.2 — Arabic-first motion graphics and video editing from one request, on a PC or inside claude.ai with no computer (run scripts/cloud_setup.py first). Motion films (2D/3D, kinetic Arabic type), a JSON timeline → film (transitions, speed ramps, Arabic titles, ducked music, -14 LUFS), auto-edited reels of talking clips, lyric/poem/dua films from sound, Voice2Motion, beat-cut montage, colour grades, karaoke captions, silence cuts, smart 9:16, per-platform export, scene detection, face privacy, Arabic motion templates, a browser editor with frame-accurate MP4 export, a scene-by-scene review page whose edits flow back into the source, per-shot AI-video prompts, launch videos from a project or URL, and a delivery gate. Use for: animation, motion graphics, montage, video edit, reel, TikTok, captions, subtitles, color grade, transcribe, beat sync, thumbnail, explainer. Arabic: انميشن، موشن، مونتاج، فيديو، ريلز، ترجمة، سبتايتل، تلوين، تفريغ، قص الصمت، غلاف، شرح متحرك."
+description: "KOSIF Montage & Motion v6.2 — Arabic-first motion graphics and video editing from one request, on a PC or inside claude.ai with no computer (run scripts/cloud_setup.py first). Motion films (2D/3D, kinetic Arabic type), a JSON timeline → film (transitions, speed ramps, Arabic titles, ducked music, -14 LUFS), auto-edited reels of talking clips, lyric/poem/dua films from sound, Voice2Motion, beat-cut montage, colour grades, karaoke captions, silence cuts, smart 9:16, per-platform export, scene detection, face privacy, Arabic motion templates, a browser editor with frame-accurate MP4 export, a scene-by-scene review page, per-shot AI-video prompts, launch videos, reference-video breakdowns into generation prompts, and a delivery gate. Use for: animation, motion graphics, montage, video edit, reel, TikTok, captions, subtitles, color grade, transcribe, beat sync, thumbnail, explainer. Arabic: انميشن، موشن، مونتاج، فيديو، ريلز، ترجمة، سبتايتل، تلوين، تفريغ، قص الصمت، غلاف، شرح متحرك."
 ---
+
+> **Start here for any video request:** read `references/operating-manual.md` — it says which tool to use when (material from files, Pinterest and links; montage, timeline, reel, verse, motion/3D, launch video, analysis and prompts; review; quality-first delivery).
 
 # KOSIF Montage & Motion — استوديو المونتاج والموشن
 
@@ -330,7 +332,7 @@ renders, never runs FFmpeg and never certifies quality; it is a second opinion o
 environment variable `KOSIF_SITE_TOKEN` through an authorized setup (never searched for, printed or pasted);
 every POST needs `--allow-remote`, which is the user's explicit permission to send **that task text** off the machine.
 Without a token or permission: skip it and plan locally with `proplan`. Tests: `python -m unittest discover -s tests/bridge -v`.
-[references/audit-v5.1.md](references/audit-v5.1.md) lists the legacy limitations found by the static audit; v5.2 fixed
+[references/audit-v5.1.md](references/audit-v5.1.md) (full package only) lists the legacy limitations found by the static audit; v5.2 fixed
 items 1–4 (name containment, escaped titles, empty fix keys, encoder exit code); 5–10 still hold.
 
 ## 12. The 5-second film, start to finish (the default quick deliverable)
@@ -445,4 +447,37 @@ Read `references/launch-video.md`. `kmotion brag init DIR|URL` gathers the mater
   lands in the first 2 s.
 - `kmotion sfx` + timeline `"audio": {"sfx": [{"src": "kit:reveal-1", "at": 0.4, "gain": -10}]}` — 20 CC0 cues
   (full package; the claude.ai upload leaves the sound files out to stay under 200 files).
+
+## 18. v6.2 — reference-video breakdown, Omni Flash prompts, quality-first final, render farm
+
+**When the user sends a video to copy, study or rebuild — read `references/video-breakdown.md` and follow it.**
+- `kmotion analyze VIDEO --out NAME.breakdown [--transcribe]` measures the WHOLE film (beats from hard cuts, dissolves and
+  element entrances; per-beat palette/background hex, motion energy, pan, entry type; LUFS, BPM, SFX sync) and
+  extracts 3 stills per beat + overview/timeline sheets. LOOK at every beat, then fill `brief.json` (all fields).
+- `kmotion omniprompt NAME.breakdown/brief.json [--overrides changes.json] [--markdown breakdown.md]` → one copy-paste
+  Google Omni Flash block (≥ 1080, compressed to 10 s with the factor stated) + the readable shot-by-shot document.
+  Overrides: brand, palette, text, duration, aspect, tone, style, add, remove (a removed main subject = rewrite the beats).
+- `kmotion analyze --batch FOLDER` → `library.json/csv`: the measured style of many references at once.
+- Example: `outputs/analysis-example-launch-video/` (breakdown, prompt, the same with a brand/palette/9:16 override).
+
+**Render time without losing quality** (measured on this PC, the 5 s 3D boat at 1080p): preview/draft 28 s for every
+review round; `kmotion final PROJECT [--blur N]` once at the end — PNG capture (lossless), libx264 slow / CRF 16, short
+side never under 1080, poster baked, gate run (173 s with 4× motion blur). Close Chrome and plug the charger in.
+`scripts/shard.py` splits a render across machines (frame ranges joined losslessly); a GitHub Actions workflow lives in
+the private repo kosif-render-lab (see `references/render-farm.md`).
+
+## 19. v6.2 — fetching media (Pinterest and more) and the Audio Lab (from the user's Cinema C V32)
+
+- `kmotion fetch URL… [--max 30] [--only video|image] [--list]` — a Pinterest pin, board or section (and TikTok,
+  Instagram, Facebook, YouTube, X… — anything yt-dlp reads) into the studio media library (`workbench/media`): videos
+  with an edit-safe copy `NAME.edit.mp4` (H.264 yuv420p, the source's constant frame rate ≤ 60, AAC 48 kHz, faststart;
+  the original kept), image pins as the original-size image (WebP → PNG). `fetch-credits.json` records the source,
+  title and creator of every file. `--list` reads a pin/board without downloading. Never type the user's password:
+  public pins need no login; private boards take a cookies.txt the user exported (`--cookies`). When the user browses
+  Pinterest in the browser pane with you, collect the pin links from the page (read_page) and pass them to `fetch`.
+  Pins are their creators' work: references, or published only with rights — say so when a pin goes into a film.
+- `kmotion audiolab FILE --mode voice|music|both|novoice|nomusic [--strong]` — speech isolated by RNNoise (`lq` model,
+  fetched once) + FFT denoise; music by centre cancellation (real stereo only — mono is refused, not faked); the video
+  with music only (under a new voice-over) or voice only. Measured on Arabic speech over a stereo bed: speech-to-pause
+  contrast 11.2 → 40.9 dB.
 

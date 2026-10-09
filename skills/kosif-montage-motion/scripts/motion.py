@@ -116,6 +116,40 @@ def json_for_script(obj) -> str:
     return _j.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
 
 
+def final(name: str, out: Path | None = None, blur: int = 1, fps: int | None = None, min_short: int = 1080, workers: int = 0,
+          poster_at: float | None = None, bake: bool = True) -> dict:
+    """The delivery render, quality first: lossless PNG capture, libx264 slow / CRF 16, the short side never under
+    min_short (a smaller page is drawn larger, not upscaled afterwards), then the poster baked as frame 0 and the gate.
+    Use `preview` (draft) for every review round and this once at the end — that, not a lower final quality, is where
+    the time is saved."""
+    d = project_dir(name)
+    w, h = _size(d / "index.html")
+    scale = max(1.0, min_short / min(w, h))
+    rep: dict = {}
+    t_poster = None
+    if bake:                                                   # the poster moment, picked on a quick draft, is DRAWN as frame 0 of the
+        import poster                                          # final render: one encode, no generation loss afterwards
+        t0 = time.perf_counter()
+        if poster_at is None:
+            draft = Path(tempfile.mkdtemp(prefix="kosif_poster_")) / "draft.mp4"
+            render(name, "studio", "looks", None, draft, draft=True, force=True)
+            poster_at = poster.pick(draft)["t"]
+        t_poster = float(poster_at)
+        rep["poster_pick_s"] = round(time.perf_counter() - t0, 1)
+    t0 = time.perf_counter()
+    path = render(name, "studio", "looks", fps, out, blur, workers=workers, force=True, capture="png", preset="slow", crf=16,
+                  scale_override=scale if scale > 1.0 else None, frame0_t=t_poster)
+    rep.update({"file": str(path), "size": f"{round(w * scale) // 2 * 2}x{round(h * scale) // 2 * 2}", "render_s": round(time.perf_counter() - t0, 1),
+                "blur": blur, "capture": "png", "crf": 16})
+    if bake:
+        jpg = poster.extract(path, 0.0, path.with_suffix(".poster.jpg"))
+        rep["poster"] = {"t": t_poster, "jpg": str(jpg), "method": "drawn as frame 0 (no re-encode)"}
+    import qa
+    g = qa.inspect(path)
+    rep["gate"] = {k: g.get(k) for k in ("ok", "issues", "lufs", "true_peak", "size", "fps")}
+    return rep
+
+
 def duration_of(index: Path) -> float:
     import re
     m = re.search(r'data-composition-id="[^"]+"[^>]*data-duration="([\d.]+)"', index.read_text(encoding="utf-8"))
@@ -303,7 +337,7 @@ def _fingerprint(d: Path, params: dict) -> str:
 
 def render(name: str, engine: str, quality: str, fps: int | None, out: Path | None, blur: int = 1, shutter: float = 0.5,
            stack: str = "average", workers: int = 0, draft: bool = False, force: bool = False, capture: str | None = None,
-           preset: str | None = None, crf: int | None = None) -> Path:
+           preset: str | None = None, crf: int | None = None, scale_override: float | None = None, frame0_t: float | None = None) -> Path:
     """draft: half size, 15 fps, ultrafast/crf 23, JPEG capture, no sub-frame blur — a review cut in a fraction of the
     time (the same page, the same t → the same composition). workers: browsers in parallel (0 = by core count).
     A finished film whose fingerprint (sources + parameters) is unchanged is not rendered again unless force."""
@@ -319,11 +353,13 @@ def render(name: str, engine: str, quality: str, fps: int | None, out: Path | No
     scale = 1.0
     if draft:                                                  # the page keeps its own layout; the browser draws it at half the pixels
         scale, fps, blur = 0.5, fps or 15, 1
+    elif scale_override:
+        scale = float(scale_override)
     capture = capture or ("jpeg" if draft else "png")
     preset = preset or ("ultrafast" if draft else "medium")
     crf = crf if crf is not None else (23 if draft else 18)
     params = {"engine": "hyperframes" if use_hf else "studio", "fps": fps or _fps(index), "size": size, "scale": scale, "blur": blur, "shutter": shutter,
-              "stack": stack, "capture": capture, "preset": preset, "crf": crf, "quality": quality, "v": 4}
+              "stack": stack, "capture": capture, "preset": preset, "crf": crf, "quality": quality, "v": 4, "frame0_t": frame0_t}
     fp = _fingerprint(d, params)
     stamp = out.with_suffix(out.suffix + ".kosif.json")
     if not force and out.exists() and stamp.exists():
@@ -347,7 +383,8 @@ def render(name: str, engine: str, quality: str, fps: int | None, out: Path | No
     else:
         import film
         rep = film.film_animate(str(index), out, fps=fps or _fps(index), seconds=duration_of(index), size=size, blur=blur,
-                                shutter=shutter, stack=stack, workers=workers, capture=capture, preset=preset, crf=crf, scale=scale)
+                                shutter=shutter, stack=stack, workers=workers, capture=capture, preset=preset, crf=crf, scale=scale,
+                                frame0_t=frame0_t)
         mux_audio(index, out)
     info = {"file": str(out), "engine": "hyperframes" if use_hf else "studio", "draft": draft, "blur": blur, "workers": rep.get("workers"),
             "frames": rep.get("frames"), "seconds": round(time.perf_counter() - t0, 1), "mb": round(out.stat().st_size / 1e6, 2)}
@@ -501,6 +538,9 @@ def main():
     sub.add_parser("kit-bundle", help="rebuild kit/three-kit.bundle.js with esbuild after editing three-kit.js")
     p = sub.add_parser("bundle"); p.add_argument("project"); p.add_argument("--entry", default="src/main.js"); p.add_argument("--out", default="assets/main.bundle.js")
     p = sub.add_parser("lint"); p.add_argument("project")
+    p = sub.add_parser("final"); p.add_argument("project"); p.add_argument("--out"); p.add_argument("--blur", type=int, default=1)
+    p.add_argument("--fps", type=int); p.add_argument("--min-short", type=int, default=1080); p.add_argument("--workers", type=int, default=0)
+    p.add_argument("--poster-at", type=float); p.add_argument("--no-poster", action="store_true")
     p = sub.add_parser("sheet"); p.add_argument("film"); p.add_argument("--at", type=float); p.add_argument("--out")
     p = sub.add_parser("speed"); p.add_argument("film"); p.add_argument("--fps", type=float)
     p = sub.add_parser("beats"); p.add_argument("audio"); p.add_argument("--out")
@@ -581,6 +621,8 @@ def main():
     elif a.cmd == "render":
         render(a.project, a.engine, a.quality, a.fps, Path(a.out) if a.out else None, a.blur, a.shutter, a.stack,
                a.workers, a.draft, a.force, a.capture, a.preset, a.crf)
+    elif a.cmd == "final":
+        print(json.dumps(final(a.project, Path(a.out) if a.out else None, a.blur, a.fps, a.min_short, a.workers, a.poster_at, not a.no_poster), ensure_ascii=False, indent=1))
     elif a.cmd == "preview":
         render(a.project, "studio", "looks", a.fps, Path(a.out) if a.out else None, workers=a.workers, draft=True, force=a.force)
     elif a.cmd == "measure":

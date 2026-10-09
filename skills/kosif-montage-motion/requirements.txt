@@ -10,4 +10,5 @@ uvicorn
 python-multipart
 pyyaml
 imageio-ffmpeg      # an ffmpeg binary when none is on PATH
+yt-dlp              # kmotion fetch: Pinterest, TikTok, Instagram, Facebook, YouTube…
 faster-whisper      # optional: transcribe / reel / captions (large download)

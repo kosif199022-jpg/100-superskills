@@ -82,7 +82,7 @@ def bake(film: Path, poster: Path, out: Path) -> dict:
     tmp = out.with_suffix(".baking.mp4")
     subprocess.run([FF, "-y", "-v", "error", "-i", str(film), "-i", str(poster), "-filter_complex",
                     "[1:v]scale=iw:ih[p];[0:v][p]overlay=0:0:enable='eq(n,0)',format=yuv420p[v]", "-map", "[v]", "-map", "0:a?",
-                    "-c:v", "libx264", "-crf", "17", "-preset", "medium", "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart",
+                    "-c:v", "libx264", "-crf", "12", "-preset", "slow", "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart",
                     str(tmp)], check=True)
     after = probe(tmp)
     if after["frames"] != before["frames"] or abs(after["duration"] - before["duration"]) > 1.5 / max(1.0, before["fps"]):

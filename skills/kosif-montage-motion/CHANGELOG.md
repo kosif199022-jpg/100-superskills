@@ -30,8 +30,29 @@ Input: https://github.com/jasonlee-breadcrumb/motion-os (MIT). The site is Claud
 - `outputs/KOSIF-v6.2-najah-verse-5s.mp4` («النجاح رحلة / 3 خطوات كل يوم», from the v5.1 voice): trophy + counter, −14.2 LUFS.
   Both v6.2 films have their poster baked as frame 0.
 
+- **Reference-video breakdown**: `scripts/analyze.py` → `kmotion analyze VIDEO | --batch FOLDER` (beats from hard cuts,
+  dissolves by colour-histogram jumps and element entrances above a codec-noise floor; per-beat palette/background hex,
+  motion energy, pan, entry type; LUFS/BPM/SFX sync; 3 stills per beat, overview and timeline sheets; brief.json to fill)
+  and `scripts/omniprompt.py` → `kmotion omniprompt` (one Google Omni Flash block, ≥ 1080, compressed to 10 s; overrides
+  for brand/palette/text/duration/aspect/tone/style/add/remove, a removed main subject stops the build; `--markdown`
+  writes the shot-by-shot document). Method: `references/video-breakdown.md`.
+- **Quality-first delivery**: `kmotion final` (PNG capture, slow/CRF 16, short side ≥ 1080, poster, gate) and the draft
+  loop; `scripts/shard.py` (frame-range render farm) + `references/render-farm.md` with the measured times.
+
+- **Fetch + Audio Lab** (the user's Cinema C V32 method): `scripts/fetch.py` → `kmotion fetch` (yt-dlp: Pinterest pins,
+  boards, image pins via og:image originals, plus TikTok/Instagram/Facebook/YouTube; simple-format retry; edit-safe copy
+  with the sound kept; fetch-credits.json; duplicates skipped) and `scripts/audiolab.py` → `kmotion audiolab` (voice /
+  music / both / novoice / nomusic; mono refused for music).
+
+- **Pinterest → montage**: image pins fetched at their original size (yt-dlp `ignore_no_formats_error`); `kmotion montage`
+  takes folders and photos (slow push in/out), prefers `.edit.mp4` copies, shows landscape media whole over a blurred
+  copy in a vertical frame (no more cut-off text), and writes `FILM.credits.txt` from fetch-credits.json. Tested live:
+  Pinterest search in the browser pane (the user signed in) → 4 video pins + 3 image pins → a 16 s 9:16 reel on an
+  original score (`outputs/KOSIF-v6.2-pinterest-night-sea-16s.mp4`, gate ok).
+- **One command**: `references/operating-manual.md` (how every tool is chosen) + `/kosif-video` for Claude Code.
+
 ### Verified
-- `python -m unittest discover -s tests`: 86 OK (+ test_launch ×7) (new: test_review ×3, test_web review route).
+- `python -m unittest discover -s tests`: 95 OK (+ test_launch ×7, test_analyze ×5, test_fetch_lab ×4); audio2motion 8 OK (new: test_review ×3, test_web review route).
 - Night boat: `inspect` ok — 1920×1080, 30 fps, H.264 yuv420p, 5.0 s, −13.7 LUFS, true peak −1.1 dBTP, no black/frozen.
 - Review loop in the built-in browser: page loads in Arabic, edit title → send → feedback on disk → `review apply`
   changed the source (then restored). The Motion OS checker passes on the generated reel.json.
