@@ -1,6 +1,6 @@
 ---
 name: kosif-montage-motion
-description: "KOSIF Montage & Motion v6.2 — Arabic-first motion graphics and video editing from one request, on a PC or inside claude.ai with no computer (run scripts/cloud_setup.py first). Motion films (2D/3D, kinetic Arabic type), a JSON timeline → film (transitions, speed ramps, Arabic titles, ducked music, -14 LUFS), auto-edited reels of talking clips, lyric/poem/dua films from sound, Voice2Motion, beat-cut montage, colour grades, karaoke captions, silence cuts, smart 9:16, per-platform export, scene detection, face privacy, Arabic motion templates, a browser editor with frame-accurate MP4 export, a scene-by-scene review page, per-shot AI-video prompts, launch videos, reference-video breakdowns into generation prompts, and a delivery gate. Use for: animation, motion graphics, montage, video edit, reel, TikTok, captions, subtitles, color grade, transcribe, beat sync, thumbnail, explainer. Arabic: انميشن، موشن، مونتاج، فيديو، ريلز، ترجمة، سبتايتل، تلوين، تفريغ، قص الصمت، غلاف، شرح متحرك."
+description: "KOSIF Montage & Motion v6.3 — Arabic-first motion graphics and video editing from one request, on a PC or claude.ai (scripts/cloud_setup.py). Motion films (2D/3D, kinetic Arabic type), mimic (a reel rebuilt shot for shot with new Pinterest footage), a JSON timeline → film (transitions, speed ramps, Arabic titles, ducked music, -14 LUFS), auto-edited reels of talking clips, lyric/poem/dua films from sound, Voice2Motion, beat-cut montage, colour grades, karaoke captions, silence cuts, smart 9:16, per-platform export, scene detection, face privacy, Arabic motion templates, a browser editor, a scene-by-scene review page, per-shot AI-video prompts, launch videos, reference-video breakdowns into generation prompts, and a delivery gate. Use for: animation, motion graphics, montage, mimic, reel, TikTok, captions, subtitles, color grade, transcribe, beat sync, thumbnail, explainer. Arabic: محاكاة، انميشن، موشن، مونتاج، فيديو، ريلز، ترجمة، سبتايتل، تلوين، تفريغ، قص الصمت، غلاف، شرح متحرك."
 ---
 
 > **Start here for any video request:** read `references/operating-manual.md` — it says which tool to use when (material from files, Pinterest and links; montage, timeline, reel, verse, motion/3D, launch video, analysis and prompts; review; quality-first delivery).
@@ -449,6 +449,8 @@ Read `references/launch-video.md`. `kmotion brag init DIR|URL` gathers the mater
   (full package; the claude.ai upload leaves the sound files out to stay under 200 files).
 
 ## 18. v6.2 — reference-video breakdown, Omni Flash prompts, quality-first final, render farm
+
+**The user sends someone's reel and wants the SAME film with new footage (المحاكاة / التقليد: same cuts, transitions, words, lettering, sound; Pinterest clips of the same mood) — read `references/mimic.md` and run `kmotion mimic` (study → fill texts/style → layer/fonts → fetch a pool from Pinterest → match → build; the gate in compare.json must pass).**
 
 **When the user sends a video to copy, study or rebuild — read `references/video-breakdown.md` and follow it.**
 - `kmotion analyze VIDEO --out NAME.breakdown [--transcribe]` measures the WHOLE film (beats from hard cuts, dissolves and

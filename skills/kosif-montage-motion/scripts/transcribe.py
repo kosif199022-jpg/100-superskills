@@ -44,9 +44,13 @@ def pick_model(model: str) -> str:
     return "large-v3"
 
 
-def transcribe(src: Path, model: str = "large-v3", lang: str | None = "ar", prompt: str | None = None, fast: bool = True) -> list[dict]:
+def transcribe(src: Path, model: str = "large-v3", lang: str | None = "ar", prompt: str | None = None, fast: bool = True,
+               vad: bool | None = None) -> list[dict]:
     """Words with times. faster-whisper first — its batched pipeline (v1.1+) is 3-4× quicker on CPU with the same
-    words; openai-whisper as a fallback when faster-whisper is not installed."""
+    words; openai-whisper as a fallback when faster-whisper is not installed.
+    vad: True = speech filter on, False = off, None (default) = on, and when it keeps nothing — singing under a music
+    bed, which the speech filter drops entirely — once more with it off (the plain decoder, no context carry-over, so a
+    long instrumental cannot start a repetition loop)."""
     model = pick_model(model)
     tmp = Path(tempfile.mkdtemp(prefix="kosif_asr_")) / "a.wav"
     subprocess.run([FF, "-y", "-v", "error", "-i", str(src), "-vn", "-ac", "1", "-ar", "16000", str(tmp)], check=True)
@@ -56,18 +60,28 @@ def transcribe(src: Path, model: str = "large-v3", lang: str | None = "ar", prom
         return _transcribe_openai(tmp, model, lang, prompt)
     import os
     m = WhisperModel(model, device="cpu", compute_type="int8", cpu_threads=max(1, os.cpu_count() or 1))
-    kw = dict(language=lang, word_timestamps=True, beam_size=5, initial_prompt=prompt, vad_filter=True)
-    try:
-        if not fast:
-            raise ImportError
-        from faster_whisper import BatchedInferencePipeline
-        segs, _ = BatchedInferencePipeline(model=m).transcribe(str(tmp), batch_size=8, **kw)
-    except ImportError:
-        segs, _ = m.transcribe(str(tmp), **kw)
-    out = []
-    for s in segs:
-        words = [{"text": w.word.strip(), "start": round(w.start, 3), "end": round(w.end, 3), "p": round(w.probability, 3)} for w in (s.words or [])]
-        out.append({"start": round(s.start, 3), "end": round(s.end, 3), "text": s.text.strip(), "words": words})
+
+    def run(use_vad: bool) -> list[dict]:
+        kw = dict(language=lang, word_timestamps=True, beam_size=5, initial_prompt=prompt, vad_filter=use_vad)
+        try:
+            if not fast or not use_vad:                       # the batched pipeline needs VAD chunks
+                raise ImportError
+            from faster_whisper import BatchedInferencePipeline
+            segs, _ = BatchedInferencePipeline(model=m).transcribe(str(tmp), batch_size=8, **kw)
+        except ImportError:
+            if not use_vad:
+                kw["condition_on_previous_text"] = False
+            segs, _ = m.transcribe(str(tmp), **kw)
+        out = []
+        for s in segs:
+            words = [{"text": w.word.strip(), "start": round(w.start, 3), "end": round(w.end, 3), "p": round(w.probability, 3)} for w in (s.words or [])]
+            if words:
+                out.append({"start": round(s.start, 3), "end": round(s.end, 3), "text": s.text.strip(), "words": words})
+        return out
+
+    out = run(vad is not False)
+    if vad is None and not any(s["words"] for s in out):
+        out = run(False)
     return out
 
 
@@ -131,9 +145,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("src"); ap.add_argument("--model", default="large-v3"); ap.add_argument("--lang", default="ar")
     ap.add_argument("--prompt"); ap.add_argument("--out"); ap.add_argument("--no-batch", action="store_true", help="the plain (slower) decoder")
+    ap.add_argument("--vad", choices=["auto", "on", "off"], default="auto",
+                    help="speech filter: auto = on, retried off when it keeps nothing (songs); off for singing over music")
     a = ap.parse_args()
     src = Path(a.src)
-    segs = transcribe(src, a.model, None if a.lang == "auto" else a.lang, a.prompt, not a.no_batch)
+    segs = transcribe(src, a.model, None if a.lang == "auto" else a.lang, a.prompt, not a.no_batch,
+                      {"auto": None, "on": True, "off": False}[a.vad])
     base = (Path(a.out) if a.out else src.parent) / src.stem
     rep = write_all(segs, base)
     for s in segs:

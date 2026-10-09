@@ -149,6 +149,11 @@ def edit_safe(src: Path) -> Path:
            "-c:v", "libx264", "-preset", "medium", "-crf", "17"]
     cmd += ["-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2"] if has_audio else ["-an"]
     subprocess.run(cmd + ["-movflags", "+faststart", str(out)], check=True)
+    # a download or encode cut short (app closed, network drop) leaves a file that probes fine but cannot be decoded
+    chk = subprocess.run([FF, "-v", "error", "-xerror", "-i", str(out), "-f", "null", "-"], capture_output=True, text=True)
+    if chk.returncode != 0 or chk.stderr.strip():
+        out.unlink(missing_ok=True)
+        raise RuntimeError(f"{src.name}: broken video (decode check failed) — fetch it again")
     return out
 
 
@@ -156,6 +161,9 @@ def fetch(urls: list[str], out: Path, max_items: int = 30, only: str | None = No
     out.mkdir(parents=True, exist_ok=True)
     cred_f = out / "fetch-credits.json"
     credits = json.loads(cred_f.read_text(encoding="utf-8")) if cred_f.exists() else []
+    # a source counts as fetched only while its file is still there (a quarantined or deleted clip is fetched again)
+    alive = lambda c: any(c.get(k) and Path(c[k]).exists() for k in ("edit", "file"))   # noqa: E731
+    credits = [c for c in credits if alive(c)]
     seen = {c.get("source") for c in credits}
     got, skipped = [], []
     for url in urls:

@@ -16,6 +16,8 @@
   canvas { position: absolute; left: 0; top: 0; }
   .layer { position: absolute; inset: 0; pointer-events: none; }
   .pic { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; visibility: hidden; }
+  .plate { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: 50% 46%; }
+  #flash { background: #FFF6E4; opacity: 0; mix-blend-mode: screen; }
   #scrim { background: radial-gradient(ellipse 85% 60% at 50% 47%, rgba(0,0,0,.32) 0%, rgba(0,0,0,.62) 100%); opacity: 0; }
   #vig { background: radial-gradient(ellipse 75% 62% at 50% 46%, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%); }
   #dim { background: #000; opacity: 0; }
@@ -28,19 +30,33 @@
   .rule { position: absolute; height: 2px; left: 20%; right: 20%; transform-origin: 50% 50%; opacity: 0; }
   #credit { position: absolute; left: 0; right: 0; text-align: center; font-weight: 300; letter-spacing: .04em; direction: ltr; }
   svg.g { position: absolute; left: 0; top: 0; overflow: visible; }
+  /* v6.4 cinematic layer: a chosen display face (assets/display.ttf), gilded words that turn in from depth, a brand mark */
+  @font-face { font-family: "KVD"; src: url("assets/display.ttf"); font-weight: 400 900; }
+  #root.display .line { font-family: "KVD", "KV", sans-serif; }
+  #text { perspective: 1100px; perspective-origin: 50% 45%; }
+  #root.gild .w { color: transparent !important; -webkit-background-clip: text; background-clip: text; text-shadow: none;
+    background-image: linear-gradient(180deg, #FFFDF6 0%, #F7EBD0 55%, #E9D3A4 100%); }
+  #root.gild .w.key { background-image: linear-gradient(180deg, #FFF1BF 0%, #F4C766 45%, #C98A2B 100%); }
+  #leak { opacity: 0; mix-blend-mode: screen; background: radial-gradient(ellipse 60% 45% at 50% 50%, rgba(255,176,80,.75), rgba(255,120,40,.25) 45%, rgba(0,0,0,0) 70%); }
+  #brand { position: absolute; display: flex; align-items: center; gap: .55em; direction: ltr; color: #F7EBD0;
+    font-family: "Segoe UI", "KV", sans-serif; font-weight: 600; letter-spacing: .32em; opacity: 0; }
+  #brand i { display: block; height: 1px; background: linear-gradient(90deg, rgba(231,182,90,.0), rgba(231,182,90,.9)); }
 </style>
 </head>
 <body>
 <div id="root" data-composition-id="root" data-width="{{W}}" data-height="{{H}}" data-start="0" data-duration="{{SECONDS}}" data-fps="{{FPS}}">
   <audio id="song" src="assets/song.wav" data-start="0" data-duration="{{SECONDS}}" data-volume="1" data-role="voice"></audio>{{MUSIC}}
   <canvas id="bg"></canvas>
-  <div class="layer" id="pics"></div>
+  <div class="layer" id="pics">{{PLATE}}</div>
   <div class="layer" id="scrim"></div>
+  <div class="layer" id="flash"></div>
   <canvas id="fx"></canvas>
+  <div class="layer" id="leak"></div>
   <div class="layer" id="vig"></div>
   <svg class="g" id="gfx"></svg>
   <div class="layer" id="text"></div>
   <div id="credit"></div>
+  <div id="brand"></div>
   <div class="layer" id="dim"></div>
 <script>
 /* The verse engine: window.VERSE (verse.js, written by verse.py and editable) + window.SOUND (the track as light) → one
@@ -74,6 +90,33 @@ const rnd = M.rng(7);
 const MOTES = Array.from({ length: 72 }, () => ({ x: rnd(), y: rnd(), r: 2 + rnd() * 7, v: 0.006 + rnd() * 0.02, f: 0.2 + rnd() * 0.5, ph: rnd() * 6.28, a: 0.25 + rnd() * 0.6 }));
 const state = { flare: 0 };
 const bg = $("#bg").getContext("2d"), fx = $("#fx").getContext("2d");
+const PLATE = V.plate ? $("#plate") : null, CUTS = (V.cuts && V.cuts.length) ? V.cuts : [0];
+const FX3D = V.fx3d !== false;                                    // v6.4: 3D words, depth dust, light rays, light leaks
+if (V.display_font) root.classList.add("display");
+if (V.gild !== false && FX3D) root.classList.add("gild");
+// depth dust: points in a 3D box flying slowly toward the lens, projected with perspective (near = big, soft, bright)
+const DUST = Array.from({ length: 140 }, () => ({ x: rnd() * 2 - 1, y: rnd() * 2 - 1, z: rnd(), v: 0.025 + rnd() * 0.05, r: 0.6 + rnd() * 1.8, ph: rnd() * 6.28 }));
+function drawDepth(t, rms, kick, dh) {
+  // god rays from a light above the frame, turning very slowly, breathing with the voice
+  const sx = W * (0.5 + 0.18 * Math.sin(t * 0.07)), sy = -0.12 * H, n = 9;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i - (n - 1) / 2) * 0.13 + 0.05 * Math.sin(t * 0.11 + i), len = H * 1.35, wdt = 0.035 + 0.02 * Math.sin(i * 1.7 + t * 0.3);
+    const g = fx.createLinearGradient(sx, sy, sx + Math.cos(a) * len, sy + Math.sin(a) * len);
+    const al = (0.05 + 0.04 * rms + 0.05 * kick) * (0.6 + 0.4 * Math.sin(t * 0.5 + i * 2.1));
+    g.addColorStop(0, hsl(MO.glow, dh, 1.1, al)); g.addColorStop(1, hsl(MO.glow, dh, 1, 0));
+    fx.fillStyle = g; fx.beginPath(); fx.moveTo(sx, sy);
+    fx.lineTo(sx + Math.cos(a - wdt) * len, sy + Math.sin(a - wdt) * len); fx.lineTo(sx + Math.cos(a + wdt) * len, sy + Math.sin(a + wdt) * len); fx.fill();
+  }
+  for (const d of DUST) {
+    const z = ((d.z - t * d.v) % 1 + 1) % 1 + 0.06, f = 0.42 / z;
+    const x = W / 2 + d.x * W * f * 0.9 + 6 * k * Math.sin(t * 0.6 + d.ph), y = CY + d.y * H * f * 0.55;
+    if (x < -60 || x > W + 60 || y < -60 || y > H + 60) continue;
+    const r = d.r * k * f * (1 + 0.3 * kick), soft = z < 0.25 ? 3.2 : 2.2, a = Math.min(1, (1 - z) * 1.2) * (z < 0.18 ? (z - 0.06) / 0.12 : 1) * (0.35 + 0.35 * rms);
+    const rg = fx.createRadialGradient(x, y, 0, x, y, r * soft);
+    rg.addColorStop(0, hsl(MO.mote, dh, 1, a)); rg.addColorStop(1, hsl(MO.mote, dh, 1, 0));
+    fx.fillStyle = rg; fx.fillRect(x - r * soft, y - r * soft, 2 * r * soft, 2 * r * soft);
+  }
+}
 
 function draw(t) {
   const sec = sectionAt(t), arc = 0.9 + 0.25 * Math.min(1, t / Math.max(1, S * 0.85));
@@ -93,6 +136,20 @@ function draw(t) {
   // light: motes rising, lifted by onsets; rings sent out by the kicks of the last second
   fx.clearRect(0, 0, W, H);
   fx.globalCompositeOperation = "lighter";
+  if (FX3D) drawDepth(t, rms, kick, dh);
+  if (PLATE) {
+    // footage under the type: each shot pushes in slowly (alternate shots ease out), the kick nudges it, the payoff
+    // brightens it; the halo is drawn over the footage, lighter than over the sky
+    let c = 0; while (c + 1 < CUTS.length && CUTS[c + 1] <= t) c++;
+    const a = CUTS[c], b = c + 1 < CUTS.length ? CUTS[c + 1] : S, u = Math.min(1, Math.max(0, (t - a) / Math.max(0.3, b - a)));
+    const e = u * u * (3 - 2 * u), push = c % 2 ? 1.10 - 0.06 * e : 1.04 + 0.06 * e;
+    PLATE.style.transform = `scale(${(push * (1 + 0.018 * kick)).toFixed(4)})`;
+    PLATE.style.filter = `brightness(${(1 + 0.22 * state.flare + 0.05 * kick).toFixed(3)}) saturate(${(1 + 0.12 * state.flare).toFixed(3)})`;
+    const hg2 = fx.createRadialGradient(W / 2, CY, 0, W / 2, CY, R * 1.25);
+    hg2.addColorStop(0, hsl(MO.glow, dh, 1, 0.07 + 0.06 * rms + 0.08 * kick + 0.22 * state.flare));
+    hg2.addColorStop(1, hsl(MO.glow, dh, 0.6, 0));
+    fx.fillStyle = hg2; fx.fillRect(0, 0, W, H);
+  }
   for (const m of MOTES) {
     const y = (((m.y - t * m.v) % 1.15) + 1.15) % 1.15 - 0.075, x = m.x + 0.012 * Math.sin(t * m.f + m.ph);
     const tw = 0.6 + 0.4 * Math.sin(t * (1.3 + m.f) + m.ph * 3);
@@ -122,8 +179,27 @@ function draw(t) {
   for (const r of ROSETTES) if (t >= r.t - 0.5 && t <= r.end + 0.6) r.g.setAttribute("transform", `translate(${W / 2} ${CY}) rotate(${(t - r.t) * 9}) scale(${1 + 0.07 * ch.beat(t)})`);
 }
 
+/* footage plate (optional): a scrim keeps the type readable; a short light flash opens each new section */
+if (PLATE) {
+  tl.set("#scrim", { opacity: 1 }, 0);
+  V.sections.slice(1).forEach((s, i) => {
+    if (FX3D) {                                                   // a warm light leak drifts across the cut instead of a flat flash
+      const dir = i % 2 ? 1 : -1;
+      tl.fromTo("#leak", { opacity: 0, xPercent: -45 * dir, scale: 1.2 }, { opacity: 0.85, xPercent: 0, scale: 1, duration: 0.28, ease: OUT, immediateRender: false }, s.t - 0.12)
+        .to("#leak", { opacity: 0, xPercent: 40 * dir, duration: 0.7, ease: IN }, s.t + 0.16);
+    } else tl.fromTo("#flash", { opacity: 0.42 }, { opacity: 0, duration: 0.5, ease: OUT, immediateRender: false }, s.t);
+  });
+}
+/* brand mark, top corner: the maker's signature instead of a sources line (the sources stay in credits.txt) */
+if (V.brand) { const b = $("#brand"), fs = 26 * k;
+  b.innerHTML = (V.brand_side === "right" ? "" : "") + `<span>${V.brand.replace(/[<>&]/g, "")}</span><i style="width:${70 * k}px"></i>`;
+  b.style.fontSize = fs + "px"; b.style.top = (portrait ? 0.045 : 0.06) * H + "px";
+  if (V.brand_side === "right") { b.style.right = 0.06 * W + "px"; b.style.flexDirection = "row-reverse"; b.querySelector("i").style.background = "linear-gradient(270deg, rgba(231,182,90,0), rgba(231,182,90,.9))"; }
+  else b.style.left = 0.06 * W + "px";
+  tl.fromTo(b, { opacity: 0, x: -20 * k }, { opacity: 0.92, x: 0, duration: 0.9, ease: OUT, immediateRender: true }, 0.4);
+}
 /* pictures (optional): one per section, a hard cut on the section's start, a slow push through it, a scrim for the type */
-if ((V.images || []).length) {
+if (!PLATE && (V.images || []).length) {
   tl.set("#scrim", { opacity: 1 }, 0);
   V.sections.forEach((s, i) => { const im = document.createElement("img"); im.className = "pic"; im.src = V.images[i % V.images.length]; $("#pics").appendChild(im);
     tl.set(im, { visibility: "visible" }, s.t).fromTo(im, { scale: 1.04 }, { scale: 1.13, duration: Math.max(0.5, s.end - s.t), ease: "none", immediateRender: false }, s.t)
@@ -143,6 +219,11 @@ V.lines.forEach((ln) => {
   const [el, spans] = lineEl(ln);
   tl.set(el, { visibility: "visible", opacity: 1, y: 0, filter: "blur(0px)" }, ln.words[0].t - 0.08);
   ln.words.forEach((w, i) => {
+    if (FX3D) {                                                  // the word turns up out of depth, a soft shadow keeps it legible
+      const sh = "drop-shadow(0px 5px 12px rgba(0,0,0,.65))";
+      tl.fromTo(spans[i], { opacity: 0, y: 46 * k, z: -220, rotationX: -78, transformPerspective: 900, transformOrigin: "50% 100%", filter: "blur(10px) " + sh },
+        { opacity: 1, y: 0, z: 0, rotationX: 0, filter: "blur(0px) " + sh, duration: 0.62, ease: "back.out(1.4)", immediateRender: true }, w.t - 0.1);
+    } else
     tl.fromTo(spans[i], { opacity: 0, y: 30 * k, filter: "blur(9px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.42, ease: OUT, immediateRender: true }, w.t - 0.07);
     if (w.key) tl.fromTo(spans[i], { scale: 1 }, { scale: 1.07, duration: 0.18, ease: "expo.out", yoyo: true, repeat: 1, immediateRender: false }, w.t + 0.12);
   });

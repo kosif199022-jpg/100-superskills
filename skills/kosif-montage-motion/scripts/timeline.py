@@ -220,6 +220,13 @@ def load(spec: dict | str | Path, base: Path | None = None) -> dict:
             raise ValueError(f"clip {i}: unknown grade {c['grade']}; one of {', '.join(montage.GRADES)}")
         if c.get("fit", "cover") not in ("cover", "contain", "blur"):
             raise ValueError(f"clip {i}: fit must be cover, contain or blur")
+        if c.get("match"):                                     # per-channel colour transfer: {"r": [gain, offset], …}
+            m = c["match"]
+            if not isinstance(m, dict) or not all(isinstance(m.get(ch), (list, tuple)) and len(m[ch]) == 2 for ch in "rgb"):
+                raise ValueError(f"clip {i}: match needs r, g and b as [gain, offset]")
+            c["match"] = {ch: [float(m[ch][0]), float(m[ch][1])] for ch in "rgb"}
+            if not all(0.3 <= g <= 3.0 and -160 <= o <= 160 for g, o in c["match"].values()):
+                raise ValueError(f"clip {i}: match gain must be 0.3–3.0 and offset −160–160")
         t = c.get("transition")
         if isinstance(t, str):
             t = None if t in ("cut", "none", "") else {"type": t}
@@ -360,6 +367,8 @@ def _intermediate(c: dict, idx: int, W: int, H: int, fps: int, bg: str, tmp: Pat
         vf.append(f"fps={fps}")
     if c.get("zoom"):
         vf.append(_zoom_chain(c["zoom"], W, H, out_dur))
+    if c.get("match"):                                         # colour transfer towards a reference look (kmotion mimic)
+        vf.append("format=rgb24,lutrgb=" + ":".join(f"{ch}='clip(val*{g:.4f}+{o:.2f},0,255)'" for ch, (g, o) in c["match"].items()))
     g = montage.GRADES.get(c.get("grade", "none"), "null")
     if g != "null":
         vf.append(g)
@@ -494,6 +503,82 @@ def text_png(o: dict, W: int, H: int, out: Path) -> dict:
     return {"file": str(out), "w": w, "h": h, "font": font_used, "lines": len(lines)}
 
 
+HARAKAT = set("\u064b\u064c\u064d\u064e\u064f\u0650\u0651\u0652\u0670")
+
+
+def text_png_browser(o: dict, W: int, H: int, out: Path) -> dict | None:
+    """The same text block drawn by a real browser (Edge/Chromium through Playwright: HarfBuzz shaping), so harakat sit
+    on their letters in any font — Pillow here has no RAQM and drops or misplaces them. Outline = a stroked copy
+    behind the fill. None when no browser is available (the caller falls back to Pillow)."""
+    import html as _html
+    try:
+        import html_render as HR
+        sp = HR._playwright()
+        exe = HR.browser_path()
+    except Exception:
+        return None
+    if not sp:
+        return None
+    size = int(o.get("size") or round(min(W, H) * 0.075))
+    font, font_used = _font(o, size)
+    stroke = max(0, int(o.get("stroke", round(size / 16))))
+    pad = round(size * 0.45) + stroke
+    lh = float(o.get("line_height", 1.3))
+    color, sc = o.get("color", "#ffffff"), o.get("stroke_color", "#000000")
+    box = f"background:{o['box']};border-radius:{round(size * 0.35)}px;" if o.get("box") else ""
+    shadow = f"filter:drop-shadow(0 {size * 0.08:.1f}px {size * 0.08:.1f}px rgba(0,0,0,.6));" if o.get("shadow", True) else ""
+    txt = _html.escape(str(o.get("text", "")))
+    rtl = any("\u0600" <= ch <= "\u06ff" for ch in str(o.get("text", "")))
+    face = f"@font-face{{font-family:K;src:url('{Path(font_used).resolve().as_uri()}');}}" if font_used else ""
+    ws = "pre" if o.get("nowrap") else "pre-wrap"
+    common = (f"font-family:K,'Segoe UI',sans-serif;font-size:{size}px;line-height:{lh};white-space:{ws};"
+              f"text-align:{o.get('align', 'center')};direction:{'rtl' if rtl else 'ltr'};")
+    page = (f"<!doctype html><html><head><meta charset='utf-8'><style>{face}html,body{{margin:0;background:transparent}}"
+            f"#t{{display:inline-block;position:relative;padding:{pad}px;max-width:{'none' if o.get('nowrap') else str(int(W * 0.84)) + 'px'};{box}{shadow}}}"
+            f"#t span{{{common}display:block}}#b{{position:absolute;inset:{pad}px;color:{sc};"
+            f"-webkit-text-stroke:{2 * stroke}px {sc}}}#f{{position:relative;color:{color}}}</style></head>"
+            f"<body><div id='t'><span id='b'>{txt}</span><span id='f'>{txt}</span></div></body></html>")
+    hp = out.with_suffix(".html"); hp.write_text(page, encoding="utf-8")
+    with sp() as pw:
+        br = pw.chromium.launch(executable_path=exe) if exe else pw.chromium.launch()
+        pg = br.new_page(viewport={"width": W, "height": H})
+        pg.goto(hp.resolve().as_uri()); pg.evaluate("document.fonts.ready")
+        pg.locator("#t").screenshot(path=str(out), omit_background=True)
+        br.close()
+    from PIL import Image
+    w, h = Image.open(out).size
+    return {"file": str(out), "w": w, "h": h, "font": font_used, "engine": "browser"}
+
+
+def fit_size(texts: list[str], font: str | None, size: int, width: float) -> int | None:
+    """One common font size at which every line of every text fits `width` px on one line (browser-measured, one launch).
+    None when no browser is available."""
+    import html as _html
+    try:
+        import html_render as HR
+        sp = HR._playwright(); exe = HR.browser_path()
+    except Exception:
+        return None
+    if not sp:
+        return None
+    face = f"@font-face{{font-family:K;src:url('{Path(font).resolve().as_uri()}');}}" if font else ""
+    spans = "".join(f"<span style='font-family:K;font-size:{size}px;white-space:pre;display:inline-block'>{_html.escape(ln)}</span><br>"
+                    for t in texts for ln in str(t).split("\n"))
+    with sp() as pw:
+        br = pw.chromium.launch(executable_path=exe) if exe else pw.chromium.launch()
+        pg = br.new_page(viewport={"width": 4000, "height": 2000})
+        # a file page, not set_content: about:blank may not load a file:// font, and the size would fit the fallback font
+        import tempfile
+        hp = Path(tempfile.mkdtemp(prefix="kosif_fit_")) / "fit.html"
+        hp.write_text(f"<!doctype html><meta charset='utf-8'><style>{face}</style><body dir='rtl'>{spans}</body>", encoding="utf-8")
+        pg.goto(hp.as_uri()); pg.evaluate("document.fonts.ready")
+        if font and not pg.evaluate("document.fonts.check('16px K')"):
+            br.close(); raise RuntimeError(f"browser could not load the font {font}")
+        widest = max(pg.evaluate("[...document.querySelectorAll('span')].map(s => s.getBoundingClientRect().width)") or [1])
+        br.close()
+    return max(8, int(size * min(1.0, width / max(widest, 1))))
+
+
 def lower_third_png(o: dict, W: int, H: int, out: Path) -> dict:
     """Name + role on an accent bar, in the lower safe area; RTL when the text is Arabic."""
     from PIL import Image, ImageDraw
@@ -617,7 +702,8 @@ def build(spec: dict | str | Path, out: Path, workers: int = 0, dry_run: bool = 
             total = total + d_i - d
             used_tr.append({"after_clip": i - 1, "type": tr["type"], "dur": round(d, 3), "at": round(off, 3)})
         else:
-            gv.append(f"{v}[{i}:v]concat=n=2:v=1:a=0[v{i}]")
+            # concat outputs AV_TIME_BASE (1/1000000); a following xfade needs both inputs on the segments' 1/90000
+            gv.append(f"{v}[{i}:v]concat=n=2:v=1:a=0,settb=1/90000[v{i}]")
             ga.append(f"{a}[{i}:a]concat=n=2:v=0:a=1[a{i}]")
             total += d_i
         v, a = f"[v{i}]", f"[a{i}]"
@@ -644,13 +730,19 @@ def build(spec: dict | str | Path, out: Path, workers: int = 0, dry_run: bool = 
                 if "anim" not in o:
                     o["anim"] = "slide-left" if info["rtl"] else "slide-right"
             else:
-                png = tmp / f"ov{k:03d}.png"; info = text_png(o, W, H, png)
+                png = tmp / f"ov{k:03d}.png"
+                eng = o.get("engine", "auto")                        # browser = HarfBuzz; auto = browser when harakat
+                info = text_png_browser(o, W, H, png) if eng == "browser" or (eng == "auto" and HARAKAT & set(str(o.get("text", "")))) else None
+                info = info or text_png(o, W, H, png)
             x, y = _place(o, W, H, info["w"], info["h"], captions=any(ov["type"] == "captions" for ov in sp["overlays"]))
             x, y, fd = _anim(o, x, y, s, e)
             ins += ["-loop", "1", "-framerate", str(fps), "-t", f"{e - s:.3f}", "-i", str(png)]
             chain = "format=rgba"
-            if fd > 0:
-                chain += f",fade=t=in:st=0:d={fd:.3f}:alpha=1,fade=t=out:st={max(0.0, e - s - fd):.3f}:d={fd:.3f}:alpha=1"
+            fin = min(float(o.get("fade_in", fd)), (e - s) / 2); fout = min(float(o.get("fade_out", fd)), (e - s) / 2)   # separate in/out (mimic dips)
+            if fin > 0:
+                chain += f",fade=t=in:st=0:d={fin:.3f}:alpha=1"
+            if fout > 0:
+                chain += f",fade=t=out:st={max(0.0, e - s - fout):.3f}:d={fout:.3f}:alpha=1"
             chain += f",setpts=PTS+{s:.3f}/TB"
             gv.append(f"[{nin}:v]{chain}[ov{k}]")
             gv.append(f"{v}[ov{k}]overlay=x='{x}':y='{y}':eval=frame:eof_action=pass:enable='between(t,{s:.3f},{e:.3f})'[vo{k}]")
