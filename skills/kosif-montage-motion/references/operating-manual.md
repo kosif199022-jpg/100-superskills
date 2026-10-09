@@ -18,6 +18,7 @@ below yourself, in this order of thinking. Speak Arabic with the user; measure b
 | files the user attached | read them; `kmotion probe` / `kmotion analyze` for video |
 | **Pinterest** (search, a pin, a board) | the user signs in in the browser pane THEMSELVES (never type a password); open `https://www.pinterest.com/search/videos/?q=…` or `/search/pins/?q=…`, collect pin links with javascript (`a[href*="/pin/"]`), check them with `kmotion fetch --list LINKS`, choose by mood/shape/length, then `kmotion fetch LINKS --out workbench/media/<project>` |
 | TikTok, Instagram, Facebook, YouTube, X | `kmotion fetch URL` (yt-dlp; the Cinema C method) |
+| **a reel to imitate shot for shot with new footage (المحاكاة)** | `kmotion mimic study REF` → texts/style/layer/fonts → Pinterest pool → `mimic match` → `mimic build` (references/mimic.md) |
 | a reference to copy | `kmotion analyze VIDEO` → read every beat's stills → fill brief.json (references/video-breakdown.md) |
 | music | the user's track, or an original one: `kmotion score out.wav --bpm … --seconds … --mood …`; ambience: `kmotion ambience` |
 | voice | the user's recording; clean it with `kmotion audiolab FILE --mode voice`; Arabic TTS: `kmotion voice` |
@@ -34,6 +35,7 @@ for 9:16), real resolution (Pinterest video is usually 720p — say so when the 
 | a precise edit (in/out points, transitions, titles, speed ramps, lower thirds, SFX) | a timeline spec → `kmotion timeline spec.json` (`audio.sfx` with `kit:` cues) |
 | a talking clip → reel | `kmotion reel CLIP` or `kmotion direct CLIP` (auto-directed), `silence`, `aspect`, `captions` |
 | a film from a voice / song / dua / poem | `kmotion verse AUDIO` (symbols by meaning, counters) or `kmotion audio2motion AUDIO` |
+| **a song → a lyric reel cut from Pinterest/collected footage** | `kmotion songreel analyze SONG --name N --lyrics lyrics.txt [--seconds 45] [--start S]` (structure pass with `small`, cached; read the excerpt + the 2 alternatives and choose as a director) → write each section's `queries` (and `grade`, e.g. golden_hour for a dawn section) into songreel.json by the MEANING of its words → Pinterest search per query in the browser pane (the user signs in), collect pin links, `kmotion fetch LINKS --only video --out MEDIA/sNN` → LOOK at one frame per clip and move off-mood, text-heavy, landscape or < 360p clips out of MEDIA → `songreel cut N --media MEDIA` → `songreel build N --title … --model large-v3 --draft` → look at frames → `--render` → gate, poster, credits, post pack |
 | motion graphics / 2D / 3D animation | `kmotion new NAME [--3d]` or `kmotion template …`; write the scene (three-kit, motion-kit, shape-kit); `kmotion frames` and LOOK |
 | a launch video for a site or app | `kmotion brag init DIR|URL` → plan → build → `kmotion brag deliver` (references/launch-video.md) |
 | a prompt for Veo / Sora / Kling / Runway / Omni Flash | `kmotion aiprompts`, or `kmotion analyze` + `kmotion omniprompt` with the user's overrides |
@@ -50,6 +52,10 @@ for 9:16), real resolution (Pinterest video is usually 720p — say so when the 
 - `kmotion inspect FILM` must pass (H.264 yuv420p, −14 ±1.5 LUFS, true peak ≤ −1, no black/frozen frames);
   `kmotion platforms FILM --to tiktok,reels,…` for per-platform copies.
 - Save to `Desktop/الاداة/outputs/`, send the file, say what you measured, what you could not verify, and the credits.
+- For a platform video, finish with the **post pack** (skill `kosif-social`): `social.py pack FILM --platforms …`
+  → a caption/hashtags/CTA (YouTube: title + description) written per platform → `social.py check` passes. A
+  carousel (`social.py carousel`), a content calendar (`calendar`, `besttime` from the account's export) or an A/B
+  plan (`abplan`/`abread`) when asked. Nothing is posted or scheduled on a platform.
 
 ## 5. Memory and publishing
 - New capability or fix → tests (`python -m unittest discover -s tests`), rebuild the packages

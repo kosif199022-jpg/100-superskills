@@ -80,6 +80,26 @@ def read_text(path: Path) -> list[list[str]]:
     return out
 
 
+def _fuzzy_pairs(a: list[str], b: list[str], floor: float = 0.55) -> list[tuple[int, int]]:
+    """Monotonic pairing of two word lists that maximises total spelling similarity (pairs below `floor` never made)."""
+    n, m = len(a), len(b)
+    sim = [[difflib.SequenceMatcher(None, x, y).ratio() if x and y else 0.0 for y in b] for x in a]
+    best = [[0.0] * (m + 1) for _ in range(n + 1)]
+    for i in range(n - 1, -1, -1):
+        for j in range(m - 1, -1, -1):
+            take = sim[i][j] + best[i + 1][j + 1] if sim[i][j] >= floor else -1.0
+            best[i][j] = max(take, best[i + 1][j], best[i][j + 1])
+    out, i, j = [], 0, 0
+    while i < n and j < m:
+        if sim[i][j] >= floor and abs(best[i][j] - (sim[i][j] + best[i + 1][j + 1])) < 1e-9:
+            out.append((i, j)); i += 1; j += 1
+        elif best[i + 1][j] >= best[i][j + 1]:
+            i += 1
+        else:
+            j += 1
+    return out
+
+
 def align(lines: list[list[str]], asr: list[dict]) -> list[list[dict]]:
     """Put the true words on the recognised words' times. Equal blocks and one-to-one replacements take the ASR word's
     time; uneven replacements share the ASR span by length; words the ASR missed sit between their timed neighbours."""
@@ -92,11 +112,17 @@ def align(lines: list[list[str]], asr: list[dict]) -> list[list[dict]]:
             for k in range(j2 - j1):
                 times[j1 + k] = (asr[i1 + k]["start"], asr[i1 + k]["end"])
         elif op == "replace":
-            t0, t1 = asr[i1]["start"], asr[i2 - 1]["end"]
-            ln = np.array([len(b[j]) + 1 for j in range(j1, j2)], float)
-            edges = t0 + (t1 - t0) * np.concatenate([[0], np.cumsum(ln) / ln.sum()])
-            for k in range(j2 - j1):
-                times[j1 + k] = (float(edges[k]), float(edges[k + 1]))
+            # uneven block: pair words by spelling (ASR of singing bends endings: سأعود → سأعودوا), in order; what
+            # pairs with nothing — a hallucinated "subscribe" at the end, a missed word — is left to the fill below
+            pairs = _fuzzy_pairs(a[i1:i2], b[j1:j2])
+            for ia, jb in pairs:
+                times[j1 + jb] = (asr[i1 + ia]["start"], asr[i1 + ia]["end"])
+            if not pairs:                                        # nothing alike: share the span by length
+                t0, t1 = asr[i1]["start"], asr[i2 - 1]["end"]
+                ln = np.array([len(b[j]) + 1 for j in range(j1, j2)], float)
+                edges = t0 + (t1 - t0) * np.concatenate([[0], np.cumsum(ln) / ln.sum()])
+                for k in range(j2 - j1):
+                    times[j1 + k] = (float(edges[k]), float(edges[k + 1]))
     # fill the words nothing timed: spread them between the neighbours
     j = 0
     while j < len(times):
@@ -379,6 +405,22 @@ def text_band(image: Path, W: int, H: int) -> float | None:
     return round(0.70 * H) if (top + bot) / 2 < cy else round(0.26 * H)
 
 
+DISPLAY_DIRS = [Path.home() / ".claude" / "skills" / "kosif-mimic" / "assets" / "fonts", HERE / "kit" / "fonts",
+                Path("C:/Windows/Fonts"), Path.home() / "AppData/Local/Microsoft/Windows/Fonts"]
+
+
+def find_display_font(name: str) -> Path | None:
+    """A display face by file path or by name ("Aref Ruqaa", "ElMessiri-700", "Amiri Bold"): the boldest match wins."""
+    p = Path(name)
+    if p.suffix.lower() in (".ttf", ".otf") and p.exists():
+        return p
+    key = name.lower().replace(" ", "").replace("-", "")
+    hits = [f for d in DISPLAY_DIRS if d.exists() for f in d.iterdir()
+            if f.suffix.lower() in (".ttf", ".otf") and key in f.stem.lower().replace("-", "").replace("_", "")]
+    rank = lambda f: (("black" in f.stem.lower() or "900" in f.stem) * 3 + ("bold" in f.stem.lower() or "700" in f.stem) * 2)
+    return max(hits, key=rank) if hits else None
+
+
 def sound(wav: Path, fps: int) -> dict:
     """The track as light: per-frame rms / bass / onset (2 decimals) and the kick, onset and beat times."""
     import qa
@@ -393,7 +435,11 @@ def sound(wav: Path, fps: int) -> dict:
 
 def verse(audio: Path, name: str, text: Path | None = None, words_json: Path | None = None, title: str | None = None, sub: str | None = None,
           size=(1080, 1920), mood="night", accent="#E7B65A", images: list[Path] | None = None, music="none", credit: str | None = None,
-          model="large-v3", fixes: str | None = None, fps: int = 30, render=False) -> dict:
+          model="large-v3", fixes: str | None = None, fps: int = 30, render=False, plate: Path | None = None,
+          cuts: list[float] | None = None, brand: str | None = None, brand_side: str = "left", font: str | None = None,
+          fx3d: bool = True) -> dict:
+    """plate: a finished, muted footage montage (e.g. from songreel) shown under the type for the whole film — all-intra
+    so every frame seeks exactly; cuts: its cut times (s), each shot gets its own slow push and a kick on the beat."""
     import motion as MO
     import transcribe as T
     from direct import apply_fixes, word_stress
@@ -452,17 +498,39 @@ def verse(audio: Path, name: str, text: Path | None = None, words_json: Path | N
             bed_note = "original underscore"
     if (proj / "assets" / "music.wav").exists() and bed_note != "none added" and bed_note != "the track's own bed":
         extra_audio = f'\n  <audio id="music" src="assets/music.wav" data-start="0" data-duration="{round(dur, 3)}" data-volume="0.45" data-role="music" data-fade-out="0.6"></audio>'
+    plate_tag, plate_rel = "", None
+    if plate:
+        dst = proj / "assets" / "plate.mp4"
+        if Path(plate).resolve() != dst.resolve():
+            shutil.copy2(plate, dst)
+        plate_rel = "assets/plate.mp4"
+        plate_tag = (f'<video id="plate" class="plate" src="{plate_rel}" data-start="0" data-duration="{round(dur, 3)}" '
+                     'muted playsinline preload="auto"></video>')
+    tmpd = Path(tempfile.mkdtemp(prefix="kosif_verse_band_"))
     for sec in pl["sections"]:                                    # keep the type off the face in each section's picture
         if images:
             ty = text_band(images[sec["i"] % len(images)], W, H)
             if ty:
                 sec["ty"] = ty
-    spec = {"W": W, "H": H, "fps": fps, "duration": round(dur, 3), "mood": mood if mood in MOODS else "night", "accent": accent,
-            "title": title, "sub": sub, "credit": credit, "images": imgs, "timing": timing, **pl}
+        elif plate:                                               # the plate: the frame in the middle of the section
+            still = tmpd / f"s{sec['i']}.jpg"
+            mid = (sec["t"] + sec["end"]) / 2
+            subprocess.run([FF, "-y", "-v", "error", "-ss", f"{mid:.3f}", "-i", str(proj / plate_rel), "-frames:v", "1", str(still)])
+            ty = text_band(still, W, H) if still.exists() else None
+            if ty:
+                sec["ty"] = ty
+    shutil.rmtree(tmpd, ignore_errors=True)
+    disp = find_display_font(font) if font else None
+    if disp:
+        shutil.copy2(disp, proj / "assets" / "display.ttf")
+    spec = {"W": W, "H": H, "fps": fps, "brand": brand, "brand_side": brand_side, "display_font": disp.name if disp else None,
+            "fx3d": fx3d, "duration": round(dur, 3), "mood": mood if mood in MOODS else "night", "accent": accent,
+            "title": title, "sub": sub, "credit": credit, "images": imgs, "timing": timing, "plate": plate_rel,
+            "cuts": [round(float(c), 3) for c in (cuts or [0.0])], **pl}
     (proj / "verse.json").write_text(json.dumps(spec, ensure_ascii=False, indent=1), encoding="utf-8")
     (proj / "verse.js").write_text("window.VERSE = " + MO.json_for_script(spec) + ";\n", encoding="utf-8")
     (proj / "sound.js").write_text("window.SOUND = " + json.dumps(sound(song, fps)) + ";\n", encoding="utf-8")
-    html = TEMPLATE.read_text(encoding="utf-8").replace("{{MUSIC}}", extra_audio)
+    html = TEMPLATE.read_text(encoding="utf-8").replace("{{MUSIC}}", extra_audio).replace("{{PLATE}}", plate_tag)
     for k, v in {"{{W}}": W, "{{H}}": H, "{{SECONDS}}": round(dur, 3), "{{FPS}}": fps, "{{TITLE}}": MO.html_text(title or name)}.items():
         html = html.replace(k, str(v))
     (proj / "index.html").write_text(html, encoding="utf-8")
@@ -485,9 +553,16 @@ def main():
     ap.add_argument("--accent", default="#E7B65A"); ap.add_argument("--images", nargs="*", type=Path); ap.add_argument("--music", default="none")
     ap.add_argument("--credit"); ap.add_argument("--model", default="large-v3"); ap.add_argument("--fix"); ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--render", action="store_true")
+    ap.add_argument("--plate", type=Path, help="a muted footage montage under the type (all-intra; kmotion songreel makes one)")
+    ap.add_argument("--cuts", type=Path, help="JSON list of the plate's cut times in seconds")
+    ap.add_argument("--brand", help="a brand mark in the top corner (the maker's name)"); ap.add_argument("--brand-side", default="left", choices=["left", "right"])
+    ap.add_argument("--font", help="display face for the lyrics: a .ttf path or a name (Aref Ruqaa, El Messiri, Amiri, Reem Kufi…)")
+    ap.add_argument("--flat", action="store_true", help="no 3D words, depth dust, light rays or leaks")
     a = ap.parse_args()
     W, H = (int(v) for v in a.size.lower().split("x"))
-    rep = verse(Path(a.audio), a.name, a.text, a.words, a.title, a.sub, (W, H), a.mood, a.accent, a.images, a.music, a.credit, a.model, a.fix, a.fps, a.render)
+    cuts = json.loads(a.cuts.read_text(encoding="utf-8")) if a.cuts else None
+    rep = verse(Path(a.audio), a.name, a.text, a.words, a.title, a.sub, (W, H), a.mood, a.accent, a.images, a.music, a.credit, a.model, a.fix, a.fps, a.render,
+                a.plate, cuts, a.brand, a.brand_side, a.font, not a.flat)
     print(json.dumps(rep, ensure_ascii=False, indent=1))
 
 
