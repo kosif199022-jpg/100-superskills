@@ -196,3 +196,8 @@
 ## الترخيص
 
 تعريفات المهارات والسكربتات: MIT. مقتطفات `references/sources.md` تحمل تراخيص أصحابها (MIT/Apache/BSD) المذكورة بجوارها.
+
+## مهارات KOSIF الإضافية (خارج الترقيم)
+- [kosif-montage-motion](skills/kosif-montage-motion/SKILL.md) — موشن جرافيك ومونتاج عربي من طلب واحد.
+- [kosif-social](skills/kosif-social/SKILL.md) — طبقة السوشيال: كابشن وهاشتاجات لكل منصة، كاروسيل، خطة محتوى، أحسن وقت نشر، اختبار A/B.
+- [kosif-mimic](skills/kosif-mimic/SKILL.md) — مهارة المحاكاة: إعادة بناء فيديو مرجعي بلقطات جديدة مع نفس الصوت والنص والانتقالات.
