@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CLAUDE_AI_MAX_FILES = 200
 SKIP_DIRS = {"__pycache__", "workbench", "out", "frames", ".claude", "node_modules", ".git"}
 SCRATCH_PROJECTS = re.compile(r"^(demo_|tt_|wb_|ui_card$|title_demo$|t_card$|mcp_p$|direct_test$|verse_5s$|card\d*$|film\d*$)")
+HISTORY_DOCS = {"CHANGELOG_v1.2_structural.md", "VOICE2MOTION_CHANGELOG.md", "UPGRADE_REPORT.md", "audit-v5.1.md", "audit-v5.3-python.md"}
 KIT_COPIES = {"motion-kit.js", "gsap.min.js", "three-kit.bundle.js", "lab-kit.js", "shape-kit.js"}
 
 
@@ -45,6 +46,8 @@ def wanted(rel: Path, claude_ai: bool) -> bool:
     if in_projects and len(parts) > 4 and parts[3] == "assets" and (rel.name in KIT_COPIES or parts[4] == "fonts"):
         return False
     if parts[:3] == ("scripts", "kit", "sfx") and rel.suffix.lower() in (".ogg", ".wav"):      # the CC0 effects: full package only
+        return False
+    if rel.name in HISTORY_DOCS:                                   # past changelogs and audit notes: kept in the full package only
         return False
     if rel.name.endswith(".bat"):
         return False

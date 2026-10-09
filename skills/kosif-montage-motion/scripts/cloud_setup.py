@@ -158,6 +158,16 @@ def setup(home: Path | None = None, install: bool = False, browser: bool = False
         rep["ffprobe"] = {"path": _shim(bin_dir, ff), "source": "ffprobe_shim.py (stand-in built on ffmpeg)"}
     else:
         rep["ffprobe"] = {"path": None, "source": "needs ffmpeg first"}
+    # yt-dlp for `kmotion fetch` (Pinterest, TikTok, Instagram…): optional, installed with --install
+    try:
+        import yt_dlp  # noqa: F401
+        rep["yt_dlp"] = "installed"
+    except ImportError:
+        if install:
+            ok, msg = _pip("yt-dlp")
+            rep["yt_dlp"] = "installed now" if ok else f"pip install yt-dlp failed: {msg}"
+        else:
+            rep["yt_dlp"] = "missing (run again with --install for kmotion fetch)"
     # browser (frame capture of HTML compositions)
     if browser:
         ok, msg = _pip("playwright")

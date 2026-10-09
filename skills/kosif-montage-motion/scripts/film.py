@@ -310,8 +310,9 @@ def _render_chunk(job: dict) -> dict:
                         raise
                     print(f"frame t={t:.3f}: {type(e).__name__}, retry {attempt + 1}", file=sys.stderr, flush=True)
                     pg.wait_for_timeout(1500 * (attempt + 1))
+        f0 = job.get("frame0_t")
         for i in range(job["i0"], job["i1"]):
-            t = start + i / fps
+            t = start + i / fps if not (i == 0 and f0 is not None) else float(f0)   # frame 0 = the poster moment (no re-encode later)
             if direct:
                 enc.stdin.write(shot(t, raw=True))
                 continue
@@ -353,7 +354,8 @@ def _concat(segments: list[Path], out: Path):
 
 def film_animate(source: str, out: Path, fps: int = 30, seconds: float | None = None, size=(1280, 720), blur: int = 1,
                  shutter: float = 0.5, start: float = 0.0, frames_dir: Path | None = None, stack: str = "average",
-                 workers: int = 0, capture: str = "png", preset: str = "medium", crf: int = 18, scale: float = 1.0) -> dict:
+                 workers: int = 0, capture: str = "png", preset: str = "medium", crf: int = 18, scale: float = 1.0,
+                 frame0_t: float | None = None) -> dict:
     """Frames of a seekable page through FFmpeg. blur = sub-frames per output frame: a real shutter, k times the cost.
     Pages that accumulate on the GPU themselves set window.__nativeBlur (the three-kit's makeFrameLoop does, reading
     window.__blur / __shutter / __fps); for every other page (GSAP compositions, canvas seek(t) films) the samples are
@@ -381,7 +383,7 @@ def film_animate(source: str, out: Path, fps: int = 30, seconds: float | None = 
         nw = workers or _workers_default(n, int(w * scale), int(h * scale))
         nw = max(1, min(nw, n))
         base = dict(src=str(src), w=w, h=h, fps=fps, blur=k, shutter=shutter, stack=stack, start=start, capture=capture,
-                    preset=preset, crf=crf, scale=scale, frames_dir=str(frames_dir) if frames_dir else None)
+                    preset=preset, crf=crf, scale=scale, frames_dir=str(frames_dir) if frames_dir else None, frame0_t=frame0_t)
         if nw == 1:
             rep = _render_chunk({**base, "i0": 0, "i1": n, "seg": str(out)})
             return {"file": str(out), "frames": n, "fps": fps, "seconds": seconds, "blur": k, "native_blur": rep["native_blur"],
