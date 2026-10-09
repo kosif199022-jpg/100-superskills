@@ -111,6 +111,13 @@ function draw(t) {
     fx.beginPath(); fx.arc(W / 2, CY, (0.16 + dt * 0.42) * Math.min(W, H), 0, Math.PI * 2); fx.stroke();
   }
   fx.globalCompositeOperation = "source-over";
+  // counters: the value is a function of t (seeks suppress tween callbacks, so never onUpdate)
+  for (const m of MOTIFS) if (m.count) { const x = Math.min(1, Math.max(0, (t - m.t) / 0.8)), v = m.target * (1 - (1 - x) ** 3);
+    m.count.textContent = Number.isInteger(m.target) ? Math.round(v).toLocaleString("en") : v.toFixed(1); }
+  // symbols breathe on the beat (a pure function of t, like everything drawn here)
+  for (const m of MOTIFS) if (m.g && t >= m.t && t <= m.end + 0.4) {
+    const b = 1 + 0.06 * ch.beat(t) + 0.04 * ch.v("rms", t), cx = W / 2, cy = m.my;
+    m.g.setAttribute("transform", `translate(${cx} ${cy}) scale(${b}) translate(${-cx} ${-cy}) ${m.base}`); }
   // interlude rosettes breathe on the beat
   for (const r of ROSETTES) if (t >= r.t - 0.5 && t <= r.end + 0.6) r.g.setAttribute("transform", `translate(${W / 2} ${CY}) rotate(${(t - r.t) * 9}) scale(${1 + 0.07 * ch.beat(t)})`);
 }
@@ -140,7 +147,7 @@ V.lines.forEach((ln) => {
     if (w.key) tl.fromTo(spans[i], { scale: 1 }, { scale: 1.07, duration: 0.18, ease: "expo.out", yoyo: true, repeat: 1, immediateRender: false }, w.t + 0.12);
   });
   if (ln.payoff) {                                             // the payoff: a light passes through the line and the sky flares
-    const sw = el.cloneNode(true); sw.classList.add("sweep"); sw.querySelectorAll(".w").forEach((s) => { s.style.color = "transparent"; s.classList.remove("key"); });
+    const sw = el.cloneNode(true); sw.classList.add("sweep"); sw.querySelectorAll(".w").forEach((s) => { s.removeAttribute("style"); s.style.color = "transparent"; s.classList.remove("key"); });   // the clone must not keep the words' entry offsets and blur (a ghost word)
     sw.style.backgroundImage = "linear-gradient(100deg, rgba(255,255,255,0) 40%, rgba(255,250,235,.95) 50%, rgba(255,255,255,0) 60%)";
     $("#text").appendChild(sw); gsap.set(sw, { yPercent: -50 });
     const last = ln.words[ln.words.length - 1].t + 0.3;
@@ -149,6 +156,56 @@ V.lines.forEach((ln) => {
     tl.fromTo(state, { flare: 0 }, { flare: 1, duration: 0.5, ease: OUT, immediateRender: false }, ln.words[0].t).to(state, { flare: 0, duration: 2.2, ease: IO }, last + 0.6);
   }
   tl.to(el, { opacity: 0, y: -46 * k, filter: "blur(6px)", duration: 0.45, ease: IN }, ln.end).set(el, { visibility: "hidden" }, ln.end + 0.46);
+});
+
+/* cards: the title in the intro, the end card after the last line */
+function card(text, y, size, weight, color) { const d = document.createElement("div"); d.className = "card"; d.textContent = text; d.style.top = y + "px";
+  d.style.fontSize = size * k + "px"; d.style.fontWeight = weight; d.style.color = color; $("#text").appendChild(d); gsap.set(d, { yPercent: -50 }); return d; }
+function showCard(els, t0, t1) { els.forEach((e, i) => { tl.set(e, { visibility: "visible" }, t0 + i * 0.25)
+  .fromTo(e, { opacity: 0, y: 26 * k, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, ease: OUT, immediateRender: true }, t0 + i * 0.25)
+  .to(e, { opacity: 0, y: -24 * k, duration: 0.45, ease: IN }, Math.max(t0 + 1, t1 - 0.45)).set(e, { visibility: "hidden" }, Math.max(t0 + 1.45, t1)); }); }
+if (V.cards && V.cards.title && V.title) { const c = V.cards.title;
+  showCard([card(V.title, CY - 20 * k, 128, 700, "#F7F2E8"), ...(V.sub ? [card(V.sub, CY + 110 * k, 42, 300, AC)] : [])], c.t, c.end); }
+if (V.cards && V.cards.header && V.title) { const c = V.cards.header;          // no intro to hold a card: the title as a quiet header
+  showCard([card(V.title, H * (portrait ? 0.19 : 0.14), 54, 500, "rgba(247,242,232,.82)")], c.t, c.end); }
+if (V.cards && V.cards.end) { const c = V.cards.end, els = [];
+  if (V.title) els.push(card(V.title, CY - 10 * k, 76, 700, "#F7F2E8"));
+  if (V.sub || V.credit) els.push(card(V.sub || V.credit, CY + 80 * k, 36, 300, AC));
+  if (els.length) showCard(els, c.t, c.end); }
+
+/* symbols by meaning (verse.py → line.motif): drawn in line above the text, breathing on the beat; a number counts up */
+const ICONS = {                                                  // 200×200 boxes, strokes only: drawn, never pasted
+  sun: ["M100 62a38 38 0 1 0 0.1 0", ...Array.from({ length: 12 }, (_, i) => { const a = i * Math.PI / 6, c = Math.cos(a), s = Math.sin(a);
+         return `M${100 + c * 54} ${100 + s * 54}L${100 + c * 76} ${100 + s * 76}`; })],
+  moon: ["M128 40a64 64 0 1 0 0 120a50 50 0 1 1 0-120Z", "M150 58l4 9 9 4-9 4-4 9-4-9-9-4 9-4Z"],
+  heart: ["M100 160C40 118 30 84 52 62c18-18 40-10 48 8c8-18 30-26 48-8c22 22 12 56-48 98Z"],
+  clock: ["M100 30a70 70 0 1 0 0.1 0", "M100 100L100 52", "M100 100L134 118"],
+  money: ["M52 140a48 14 0 1 0 96 0a48 14 0 1 0-96 0", "M52 140v-18a48 14 0 0 1 96 0v18", "M52 122v-18a48 14 0 0 1 96 0v18", "M52 104a48 14 0 0 1 96 0", "M100 76V36M84 50l16-16 16 16"],
+  trophy: ["M66 40h68v34a34 34 0 0 1-68 0Z", "M66 52H44a22 22 0 0 0 26 30", "M134 52h22a22 22 0 0 1-26 30", "M100 108v26", "M74 160h52l-6-26H80Z"],
+  road: ["M60 170L92 40", "M140 170L108 40", "M100 160v-18M100 124v-16M100 92v-14M100 64v-12", "M80 40l20-22 20 22"],
+  question: ["M70 70a30 30 0 1 1 44 26c-10 6-14 12-14 24", "M100 146v4"],
+  check: ["M100 30a70 70 0 1 0 0.1 0", "M66 102l24 24 46-50"],
+  home: ["M40 100L100 44l60 56", "M58 86v74h84V86", "M88 160v-40h24v40"],
+  rain: ["M60 110a26 26 0 0 1 8-50a36 36 0 0 1 68 6a22 22 0 0 1 4 44Z", "M70 128l-8 20M100 128l-8 20M130 128l-8 20"],
+  light: ["M100 150V96", ...[-60, -35, -12, 12, 35, 60].map((d) => { const a = (d - 90) * Math.PI / 180; return `M${100 + Math.cos(a) * 34} ${150 + Math.sin(a) * 34}L${100 + Math.cos(a) * 100} ${150 + Math.sin(a) * 100}`; }), "M60 150h80"],
+};
+const MOTIFS = [];
+V.lines.forEach((ln) => { const m = ln.motif; if (!m) return;
+  const lineY = ln.y || sectionAt(ln.t + 0.01).ty || CY, my = lineY - (lineY > H * 0.6 ? 0.2 : 0.17) * H, S2 = 200 * k * 1.15;
+  if (m.kind === "count") {                                       // the number said, counting up to its value
+    const el = card("0", my, 150, 700, AC); el.style.direction = "ltr"; const target = parseFloat(m.value) || 0, o = { v: 0 };
+    tl.set(el, { visibility: "visible" }, m.t).fromTo(el, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)", immediateRender: true }, m.t)
+      .to(el, { opacity: 0, y: -20 * k, duration: 0.35, ease: IN }, m.end).set(el, { visibility: "hidden" }, m.end + 0.36);
+    MOTIFS.push({ count: el, o, target, t: m.t });
+    return; }
+  const g = document.createElementNS(NS, "g"); g.setAttribute("opacity", 0); gfx.appendChild(g);
+  const paths = (ICONS[m.kind] || []).map((d) => { const p = document.createElementNS(NS, "path");
+    Object.entries({ d, fill: "none", stroke: AC, "stroke-width": 5, "stroke-linecap": "round", "stroke-linejoin": "round" }).forEach(([a, v]) => p.setAttribute(a, v));
+    g.appendChild(p); return p; });
+  const base = `translate(${W / 2 - S2 / 2} ${my - S2 / 2}) scale(${S2 / 200})`; g.setAttribute("transform", base);
+  tl.set(g, { opacity: 1 }, m.t); paths.forEach((p, i) => M.drawPath(tl, p, m.t + i * 0.06, 0.7, { ease: IO }));
+  tl.to(g, { opacity: 0, duration: 0.35, ease: IN }, m.end);
+  MOTIFS.push({ g, base, t: m.t, end: m.end, S2, my });
 });
 
 /* sections: a thin rule of light opens from the centre (the chapter's punctuation, not a transition effect) */
@@ -167,21 +224,6 @@ const ROSETTES = (V.interludes || []).map((it) => {
   tl.to(g, { opacity: 0, duration: 0.5, ease: IN }, it.end);
   return { g, t: it.t, end: it.end };
 });
-
-/* cards: the title in the intro, the end card after the last line */
-function card(text, y, size, weight, color) { const d = document.createElement("div"); d.className = "card"; d.textContent = text; d.style.top = y + "px";
-  d.style.fontSize = size * k + "px"; d.style.fontWeight = weight; d.style.color = color; $("#text").appendChild(d); gsap.set(d, { yPercent: -50 }); return d; }
-function showCard(els, t0, t1) { els.forEach((e, i) => { tl.set(e, { visibility: "visible" }, t0 + i * 0.25)
-  .fromTo(e, { opacity: 0, y: 26 * k, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, ease: OUT, immediateRender: true }, t0 + i * 0.25)
-  .to(e, { opacity: 0, y: -24 * k, duration: 0.45, ease: IN }, Math.max(t0 + 1, t1 - 0.45)).set(e, { visibility: "hidden" }, Math.max(t0 + 1.45, t1)); }); }
-if (V.cards && V.cards.title && V.title) { const c = V.cards.title;
-  showCard([card(V.title, CY - 20 * k, 128, 700, "#F7F2E8"), ...(V.sub ? [card(V.sub, CY + 110 * k, 42, 300, AC)] : [])], c.t, c.end); }
-if (V.cards && V.cards.header && V.title) { const c = V.cards.header;          // no intro to hold a card: the title as a quiet header
-  showCard([card(V.title, H * (portrait ? 0.19 : 0.14), 54, 500, "rgba(247,242,232,.82)")], c.t, c.end); }
-if (V.cards && V.cards.end) { const c = V.cards.end, els = [];
-  if (V.title) els.push(card(V.title, CY - 10 * k, 76, 700, "#F7F2E8"));
-  if (V.sub || V.credit) els.push(card(V.sub || V.credit, CY + 80 * k, 36, 300, AC));
-  if (els.length) showCard(els, c.t, c.end); }
 
 if (V.credit) { const c = $("#credit"); c.textContent = V.credit; c.style.top = (H * (portrait ? 0.84 : 0.9)) + "px"; c.style.fontSize = 24 * k + "px"; c.style.color = "rgba(247,242,232,.45)"; }
 tl.fromTo("#dim", { opacity: 1 }, { opacity: 0, duration: 0.6, ease: OUT, immediateRender: true }, 0);

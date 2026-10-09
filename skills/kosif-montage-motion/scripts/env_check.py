@@ -90,7 +90,23 @@ def check() -> dict:
     }
     can_render = bool(ff and br and libs["playwright"] and libs["numpy"] and libs["PIL"])
     rep["route"] = "A" if can_render else ("B" if ff and libs["numpy"] and libs["cv2"] else "C")
+    try:                                                      # v6: which face detector, how many xfade transitions, a Tk window
+        import faces
+        rep["face_detector"] = faces.which()
+    except Exception:
+        rep["face_detector"] = None
+    try:
+        import timeline
+        rep["xfade_transitions"] = len(timeline.transitions()) if ff else 0
+    except Exception:
+        rep["xfade_transitions"] = 0
+    rep["tk"] = _mod("tkinter")
     rep["can"] = {
+        "timeline_transitions": bool(ff and libs["PIL"]),
+        "scenes": bool(ff),
+        "privacy_faces": bool(ff and libs["numpy"] and libs["scipy"]),
+        "motion_templates": can_render,
+        "tk_window": rep["tk"],
         "render_films": can_render,
         "montage_grade_captions": bool(ff),
         "decaption": bool(ff and libs["cv2"] and libs["numpy"]),

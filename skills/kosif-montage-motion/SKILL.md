@@ -1,6 +1,6 @@
 ---
 name: kosif-montage-motion
-description: "KOSIF Montage & Motion v5 — مونتاج وموشن احترافي من طلب واحد: مونتاج موجَّه تلقائي لمقطع متكلم (كلمات مفتاحية، كاميرا، رموز، ذروة)، فيلم نص حركي من صوت فقط (أغنية، قصيدة، دعاء)، أنيميشن 2D و3D واقعي (Three.js) وشخصيات ثلاثية الأبعاد منحوتة، موشن غرافيك ونص عربي حركي، مونتاج أي فيديو (قص على الإيقاع، تلوين، ترجمة كاريوكي عربية، تخفيض الموسيقى، −14 LUFS)، ريلز تلقائي، قص الصمت، تحويل 9:16 ذكي، تصدير كل النسخ وغلاف بعنوان عربي، تفريغ الكلام، إزالة الترجمة المحروقة، موسيقى أصلية، تصيير متوازي سريع، وبوابة جودة. Use for: animation, lyric video, motion graphics, 3D animation, 3D character, video montage, edit this video, reel, short, TikTok, captions, subtitles, color grade, remove burned subtitles, transcribe, beat sync, jump cut, vertical crop, thumbnail, loop, stabilize, showreel, explainer, kinetic typography. Arabic: انميشن، موشن، مونتاج، فيديو، ريلز، ترجمة فيديو، سبتايتل، تلوين، إزالة الترجمة، تفريغ، قص الصمت، غلاف، شرح متحرك."
+description: "KOSIF Montage & Motion v6.2 — Arabic-first motion graphics and video editing from one request, on a PC or inside claude.ai with no computer (run scripts/cloud_setup.py first). Motion films (2D/3D, kinetic Arabic type), a JSON timeline → film (transitions, speed ramps, Arabic titles, ducked music, -14 LUFS), auto-edited reels of talking clips, lyric/poem/dua films from sound, Voice2Motion, beat-cut montage, colour grades, karaoke captions, silence cuts, smart 9:16, per-platform export, scene detection, face privacy, Arabic motion templates, a browser editor with frame-accurate MP4 export, a scene-by-scene review page whose edits flow back into the source, per-shot AI-video prompts, launch videos from a project or URL, and a delivery gate. Use for: animation, motion graphics, montage, video edit, reel, TikTok, captions, subtitles, color grade, transcribe, beat sync, thumbnail, explainer. Arabic: انميشن، موشن، مونتاج، فيديو، ريلز، ترجمة، سبتايتل، تلوين، تفريغ، قص الصمت، غلاف، شرح متحرك."
 ---
 
 # KOSIF Montage & Motion — استوديو المونتاج والموشن
@@ -9,9 +9,30 @@ One skill for every moving-picture job: films made from code (2D, 3D, canvas), e
 quality gate. Everything is deterministic (each frame is a function of time), measured (beats, loudness, speed,
 exposure) and rendered locally. Built from KOSIF Motion v3.4, the Ultra Motion & Montage skill and KOSIF Omni's
 cinema, video, audio, lighting and vision skills; v5 joins the v4 branch (fast parallel renders, drafts, everyday
-edits, lab kit), the Pro v1.3 branch (shape kit, 3D structural twin) and the auto-directed edit (`direct`) and the sound-only typographic film (`verse`).
+edits, lab kit), the Pro v1.3 branch (shape kit, 3D structural twin) and the auto-directed edit (`direct`) and the sound-only typographic film (`verse`); v5.2 adds Voice2Motion (`audio2motion`), the optional private Workbench planner (`site_bridge`) and the hardening from the v5.1 static audit.
 
-## 0. First: what can this machine do?
+## 0. Where am I? A PC, or claude.ai with no computer
+If `/mnt/user-data` or `/mnt/skills` exists (claude.ai), or the skill folder is read-only, there is **no user PC**:
+never send the user to localhost, `.bat` files, Edge, Windows voices or the local site. Work in the sandbox:
+```bash
+python <skill>/scripts/cloud_setup.py --install      # once per sandbox: writable home ~/kosif-motion, ffmpeg (imageio-ffmpeg)
+                                                     # + an ffprobe stand-in in ~/kosif-motion/bin, the examples copied
+python <skill>/scripts/kmotion.py <command> …        # always through kmotion: it applies that home and bin by itself
+```
+- Inputs the user uploads: `/mnt/user-data/uploads`. Deliver every file to `/mnt/user-data/outputs` and say where it is.
+- **Renders with no browser** (verified in a sandbox with only the imageio-ffmpeg binary and the ffprobe stand-in):
+  `workbench` (a task → plan → 2D film with Arabic titles, Pillow + FFmpeg), `timeline` (clips, xfade transitions,
+  speed ramps, Arabic overlays, captions, ducked music, two-pass −14 LUFS), `audio2motion` (voice → motion scenes, voice
+  normalised to −14 LUFS), `montage`, `grade`, `captions`, `silence`, `aspect`, `trim`, `concat`, `loop`, `export`,
+  `platforms`, `thumb`, `scenes`, `privacy`, `studio-import`, `score`, `ambience`, `structural`, `inspect`, `sheet`.
+- **Needs a browser** (Chromium via Playwright): `new/frames/preview/render` of HTML, 3D and lab compositions, `direct`,
+  `verse`, rendering `template` projects. Try `cloud_setup.py --install --browser`; if the report still shows no browser,
+  deliver the composition's `index.html` (it plays itself) and, for a montage the user wants to cut by hand, point to
+  KOSIF Studio Cloud (the owner's claude.ai artifact; frame-accurate MP4 in their browser). Say plainly what was not rendered.
+- `transcribe` needs faster-whisper and a model download; when that is blocked, ask for a transcript or timed cues.
+- Uploading this skill to claude.ai: build the ≤ 200-file package with `scripts/build_package.py --claude-ai`.
+
+## 0b. What can this machine do?
 ```bash
 python scripts/env_check.py
 ```
@@ -276,3 +297,152 @@ fracture, actual-object dimensions or Full Pro completion from this package.
   `camera.updateMatrixWorld()` first — never rely on the previous frame's state.
 - Example: `scripts/projects/bunny_twin` — `python projects/bunny_twin/twin/build_truss.py` (solve) then
   `kmotion render projects/bunny_twin --engine studio --blur 2`.
+
+## 10. v5.2 Voice2Motion — uploaded voice → semantic motion graphics (`audio2motion`)
+
+Trigger: the user uploads `wav/mp3/m4a` and asks for graphics that follow the *spoken words* — «اعمل موشن جرافيك للصوت»,
+«حوّل التعليق الصوتي لفيديو». Route here (not to `verse`, which is typographic, and not to beat matching) when the
+**meaning** of each sentence must choose the picture.
+
+1. Probe the real audio (duration, pauses). Never invent a transcript or word times: a transcript comes from the user,
+   from `transcribe` (Whisper, if installed) or from an existing timecoded file.
+2. Cue sheet `cues.json`: `{"cues":[{"start","end","text","kind"}], "timing_quality": "..."}` sorted, non-overlapping,
+   inside the duration. `kind` ∈ weather · traffic · support · refund · generic (extend `audio2motion.py` for a new motif;
+   `classify()` already reads Arabic keywords). `--transcript file.txt` without times gives *estimated* cues labelled
+   `estimated_from_text_length_NOT_ASR` — say so in the delivery.
+3. Every scene animates and reacts to the measured speech energy (the bars at the bottom are the real RMS envelope).
+   Captions are shaped Arabic (arabic_reshaper + bidi) in the first Arabic-capable font found (NotoKufiArabic, Amiri,
+   Segoe UI, Tahoma; override with `KOSIF_FONT` / `KOSIF_FONT_BOLD`).
+4. Render → `inspect` the MP4 (video + audio streams, −14 LUFS) and sample one frame per cue (`frames`/`sheet`).
+5. Deliver the MP4 **and** `cues.json` (the editable source).
+
+```
+python scripts/kmotion.py audio2motion voice.wav --cues cues.json --out out/voice.mp4 --fps 30 --size 1080x1920
+python scripts/audio2motion.py voice.wav --transcript voice.txt --plan-only          # cue sheet to review first
+python -m unittest scripts/test_audio2motion.py -v
+```
+
+## 11. Optional: the private KOSIF Motion Workbench planner (`site_bridge.py`, `kmotion bridge`)
+
+A stdlib-only client for a *remote planning* service (plan → validate → compile → 2D `project_html`). It never
+renders, never runs FFmpeg and never certifies quality; it is a second opinion on shot lists. Rules, from
+[references/site-bridge.md](references/site-bridge.md): exact origin only; the credential arrives as the
+environment variable `KOSIF_SITE_TOKEN` through an authorized setup (never searched for, printed or pasted);
+every POST needs `--allow-remote`, which is the user's explicit permission to send **that task text** off the machine.
+Without a token or permission: skip it and plan locally with `proplan`. Tests: `python -m unittest discover -s tests/bridge -v`.
+[references/audit-v5.1.md](references/audit-v5.1.md) lists the legacy limitations found by the static audit; v5.2 fixed
+items 1–4 (name containment, escaped titles, empty fix keys, encoder exit code); 5–10 still hold.
+
+## 12. The 5-second film, start to finish (the default quick deliverable)
+
+```
+python scripts/kmotion.py new five --seconds 5 --fps 30 --size 1080x1920 --title "العنوان"   # 2D composition in projects/five
+# edit projects/five/index.html: scene list (≤ 3 beats in 5 s), one carrier object, one camera move, ≤ 8 words
+python scripts/kmotion.py frames projects/five --times 0.5,2.5,4.5                           # the keyframe gate, by eye
+python scripts/kmotion.py lint projects/five && python scripts/kmotion.py render projects/five --engine studio --blur 2
+python scripts/kmotion.py inspect out/five.mp4                                               # duration 5.0 s, fps, black/freeze, loudness
+```
+Five seconds is one idea: entrance (0–1.2 s), hold with a slow camera (1.2–3.8 s), exit or payoff (3.8–5 s).
+
+## 13. v6.0 — KOSIF Motion Web: the local studio site, with Claude as the brain (2026-10-09)
+
+```
+python scripts/kmotion.py web                 # http://127.0.0.1:8766/  (or «KOSIF Motion Web.bat»)
+python -m unittest tests.test_web -v          # the site's 9 offline tests
+```
+The site is the hands, Claude is the brain. Tabs: الوسائط (uploads stay in `workbench/media`) · الوصفات (every kmotion
+command as a form, the command line shown first) · المشاريع (create 2D/3D/lab/canvas or a motion template; self-playing
+preview; edit index.html / edit.json / verse.json with a `.bak`; frames · draft · render · lint) · التايملاين (JSON +
+a computed strip; validate · save · render) · المهام (live log, outputs, player) · Workbench (the hosted site's
+plan → validate → compile → canvas preview, plus a local MP4 render and a project from the manifest) · Claude · البيئة.
+
+Contract kept from the KOSIF Motion Workbench v3 source: `/api/health|templates|plan|validate|compile`, `/api/render/*`
+(job tokens, ffprobe verification), `/mcp` (`motion_plan|validate|compile|templates`) — ported to Python; the 13
+`domain.cjs` cases pass. Studio tools on `/mcp`: `kosif_env|recipes|run|job|jobs|media|projects|project_read|
+project_write|project_create|timeline_check|timeline_save|transitions|render_manifest`. Register once in Claude Code:
+`claude mcp add --transport http kosif-web http://127.0.0.1:8766/mcp` — then Claude writes compositions into projects,
+runs recipes and polls jobs. Without MCP or the CLI, the Claude tab copies the same prompt package to paste into any
+Claude chat and applies the pasted reply (nothing runs before تطبيق). Details: `references/web-studio.md`.
+
+## 14. v6.0 — timeline, scenes, privacy, templates, styles, platforms
+
+```
+python scripts/kmotion.py timeline edit.json --out film.mp4 --inspect     # kmotion timeline --example edit.json · kmotion transitions
+python scripts/kmotion.py scenes CLIP.mp4 --sheet shots.png --timeline edit.json [--transition fade]
+python scripts/kmotion.py privacy CLIP.mp4 --out safe.mp4 [--mode pixelate|blur|box] [--region x,y,w,h[,from,to]]
+python scripts/kmotion.py template list · template new NAME --template title-card --set title="…" sub="…" accent=#E7B65A
+python scripts/kmotion.py captions CLIP.mp4 --spec caps.json --style tiktok|hormozi|boxed|minimal|reels|cinema|punchy
+python scripts/kmotion.py platforms FILM.mp4 --out deliver --platforms tiktok,shorts,whatsapp --title "عنوان"
+```
+- **timeline** (`references/timeline-schema.md`): clips with in/out, constant speed (pitch-kept audio) or exact speed
+  ramps, Ken-Burns zoom, grades, fit cover/contain/blur, images and colour cards; 57 `xfade` transitions with matching
+  audio cross-fades; Pillow-drawn Arabic text/lower-third/image overlays with entrances; a progress bar; karaoke captions;
+  music ducked under the voice or under the footage's own speech; −14 LUFS. Intermediates render in parallel; the
+  final pass is one graph. `--dry-run` shows the graph; `film.timeline.json` records every decision.
+- **scenes**: shot boundaries by `scdet` (fallback `select=scene`), a thumbnail sheet, `--split`, and a timeline spec
+  with one clip per shot (cuts by default, as a city-montage cut rhythm advises).
+- **privacy**: faces pixelated/blurred/boxed with tracking, a margin and a hold through misses; manual regions with
+  time windows; sound untouched. Detector = YuNet (drop `face_detection_yunet_2023mar.onnx` into `scripts/kit/models/`
+  — not downloaded automatically), Haar when the build has it, else the skin heuristic (over-protects; the report says which).
+- **templates** (`templates/motion/`): title-card · lower-third · stat-counter · quote-card · logo-reveal · countdown ·
+  end-card · bullet-list — Arabic-first, Cairo embedded, deterministic, lint-clean; parameters kept in `template.json`.
+- **caption styles**: `tiktok` (≤ 4 words, thick outline), `hormozi` (one word at a time), `boxed` (opaque box),
+  `minimal` (no pop), with the v5 `reels`, `cinema`, `punchy`.
+- **platforms**: one checked file per platform (ratio, size, bitrate ceiling, duration/size limits reported, never trimmed).
+- **remote**: `render_client.py` (v5.3, consent-gated external 2D render) and the public `site_bridge.py` with their tests.
+Honesty: `faces.which()` is in every privacy report; platform limits are "as commonly published — verify at use"; a
+timeline's measured durations may differ from the plan by up to a frame per clip.
+
+## 15. v6.1 — KOSIF Studio 6.0 in the kit, frame-accurate browser export, Studio Cloud (2026-10-09)
+
+- `/studio/` on the local site is the browser montage editor from the Workbench v4 source (import media, order and
+  trim clips, text/shape layers, soundtrack, project JSON). «تصدير MP4 دقيق» renders frame by frame (WebCodecs H.264 +
+  AAC, mp4-muxer) at −14 LUFS without real time; «تسجيل مباشر» is the original MediaRecorder capture.
+- KOSIF Studio Cloud (claude.ai artifact) is the same editor as one page, rebuilt with
+  `python scripts/web/build_studio_cloud.py --out studio-cloud.html --home-url URL_OF_KOSIF_MOTION_CLOUD`.
+- `kmotion studio-import PROJECT.kosif.json --out edit.json --media DIR [--render film.mp4]` turns a Studio project into
+  a timeline for the full FFmpeg pipeline; the site's timeline tab has «استيراد مشروع Studio».
+- `projects/midnight_cat` renders the v4 MIDNIGHT scene through the engine (`kmotion render projects/midnight_cat`).
+- The local API refuses state-changing requests from other websites (Origin / Sec-Fetch-Site guard).
+- Tests: `node --test tests/studio/*.test.mjs` (28) besides the Python suites.
+- Packages: `python scripts/build_package.py --out ../KOSIF-Montage-Motion-v6.1.zip` (full) and
+  `--claude-ai --out ../KOSIF-Montage-Motion-v6.1-claude-ai.zip` (the ≤ 200-file claude.ai upload). After installing
+  from the upload, run `kmotion sync projects/NAME` before rendering an example (it restores kit scripts and fonts).
+
+## 16. v6.2 — the review page (Motion OS, MIT), AI-video prompts, the night-boat film (2026-10-09)
+
+The site helps Claude; it does not replace it. After a render, open the film for review and let the user mark it up:
+- `kmotion review init PROJECT|SPEC.json|VIDEO [--video film.mp4]` writes `reel.json` (scenes + editable elements) and
+  serves it at `http://127.0.0.1:8766/review/NAME/` — the Motion OS player by Jason Lee (MIT, commit 6dbf5da: Arabic/RTL
+  UI, 9:16), patched so «أرسل إلى Claude» also saves the feedback to `NAME/review/feedback-v*.json`.
+- `kmotion review feedback NAME` prints what the user sent; `kmotion review apply NAME` writes every **bound** edit into the
+  source exactly (timeline spec fields; an HTML page's `<script id="kosif-props">` JSON and `:root` colours) and lists
+  what is left for you (notes, motion requests, unbound edits) and the approved scenes not to touch. Then render,
+  `sheet` + `inspect`, and `kmotion review bump NAME --video NEW.mp4` (the open page reloads as the next version).
+- HTML compositions declare their review data in `<script type="application/json" id="kosif-reel">` (scenes → els with
+  `props.*.bind` keys of `kosif-props`, optional `boxBind`/`timeBind`); see `scripts/projects/night_boat/index.html`.
+  Check with `node scripts/web/static/review/check.mjs PROJECT` (the Motion OS checker).
+- MCP: `kosif_reviews`, `kosif_review_init`, `kosif_review_feedback`, `kosif_review_apply`.
+- `kmotion aiprompts SHOTS.json|reel.json|PROJECT` — per-shot 7-layer prompts for Veo, Sora, Kling, Runway and a
+  keyframe (recovered from ultra-motion-montage / Egypt-2120); style locks carry across shots; lighting without
+  direction + Kelvin is flagged. Text only: nothing is sent anywhere.
+- One-click install restored from the old KOSIF-Motion package: `install.bat`, `requirements.txt`, `KOSIF Motion.bat`.
+- `projects/night_boat`: 5 s, 1920×1080, three-kit sea (planar reflection, moon glitter path), a parametric felucca hull,
+  a 1900K flickering lantern, a fisherman, a fish splash at 2.8 s with a synced plink, Arabic title from `kosif-props`.
+- **v5.1 recovered** (from kosif-studio's uncommitted work): verse draws a symbol by meaning above a line (sun, moon,
+  heart, clock, money, trophy, road, question, check, home, rain, light) and counts up a number that is said; titles
+  are escaped (`motion.html_text`), script JSON is `</`-safe (`motion.json_for_script`); audio2motion labels come from
+  the cue's own words (never the demo's "68°F"); `film.py` explains a missing studio.py.
+
+## 17. v6.2 — launch videos, the poster, readability, sound effects (the /brag method, MIT)
+
+Read `references/launch-video.md`. `kmotion brag init DIR|URL` gathers the material and writes `brag-plan.md`
+(rubric, shape, tones, laws); you write the angle and storyboard, build with the engine, then
+`kmotion brag deliver OUT --film film.mp4`. Use the pieces in any film:
+- `kmotion poster FILM [--at T] --bake` — the strongest settled frame becomes frame 0 (thumbnails everywhere use it);
+  frame count, duration and sound unchanged (checked). Do it for every delivery that opens on a fade.
+- `kmotion readable FILE` — reel.json / verse.json / a timeline spec: lines too short to read, and whether the hook
+  lands in the first 2 s.
+- `kmotion sfx` + timeline `"audio": {"sfx": [{"src": "kit:reveal-1", "at": 0.4, "gain": -10}]}` — 20 CC0 cues
+  (full package; the claude.ai upload leaves the sound files out to stay under 200 files).
+

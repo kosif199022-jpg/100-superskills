@@ -2,12 +2,12 @@
 
 ## Claude Code (كل شيء يعمل: المهارات + السكربتات)
 ```text
-/plugin marketplace add C:\Users\اغنام الوادي\Desktop\الاداة\100-superskills
+/plugin marketplace add kosif199022-jpg/100-superskills
 /plugin install 100-superskills@superskills
 ```
 تجربة بلا تثبيت دائم:
 ```text
-claude --plugin-dir "C:\Users\اغنام الوادي\Desktop\الاداة\100-superskills"
+claude --plugin-dir "PATH/TO/100-superskills"
 ```
 بعدها اكتب طلبك بالعربية مباشرة («اعمل لي انميشن 10 ثوانٍ عن…»، «اكتب برومبت احترافي لـ…») وسيلتقط كلاود المهارة من وصفها،
 أو اطلبها بالاسم: `/100-superskills:claude-animation-studio`.

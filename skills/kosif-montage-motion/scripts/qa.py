@@ -11,6 +11,10 @@
 Numbers follow references/craft-numbers.md (measured launch-film norms).
 """
 from __future__ import annotations
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):
+    if hasattr(_s, "reconfigure"):
+        _s.reconfigure(encoding="utf-8", errors="replace")   # Windows consoles default to a legacy code page
 
 import json
 import math
@@ -69,7 +73,8 @@ RULES = [
     ("warn", r"ease\s*:\s*[\"']linear[\"']|ease\s*:\s*[\"']none[\"']", "linear ease on a move: keep linear for drift, data and luminance ramps only"),
     ("info", r"\.from\s*\(", "gsap.from renders its from-state immediately: prefer fromTo with immediateRender:false for later entrances"),
 ]
-ALLOW = {"motion-kit.js", "gsap.min.js", "main.bundle.js", "three-kit.js"}
+# the kit's own files (what `kmotion sync` copies in) are vetted once, not linted as project code
+ALLOW = {"motion-kit.js", "gsap.min.js", "main.bundle.js", "three-kit.js", "three-kit.bundle.js", "shape-kit.js", "lab-kit.js"}
 
 
 def lint(project: Path) -> list[dict]:
@@ -175,6 +180,8 @@ def inspect(film: Path, lufs: float = -14.0, tol: float = 1.5, expect: list | No
     stretches (fades at the ends and listed holds such as a tape-stop are allowed), integrated loudness and true peak, and
     exposure measured on sampled frames (blown highlights, crushed blacks)."""
     film = Path(film)
+    if not film.is_file():
+        raise SystemExit(f"{film}: no such file")
     expect = expect or []
     r = subprocess.run([FP, "-v", "error", "-show_entries", "stream=codec_type,codec_name,pix_fmt,width,height,r_frame_rate:format=duration",
                         "-of", "json", str(film)], capture_output=True, text=True)

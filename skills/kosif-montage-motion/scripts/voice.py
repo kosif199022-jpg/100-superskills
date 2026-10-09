@@ -10,6 +10,10 @@ In a composition: <audio id="voice" src="assets/voice.wav" data-start="0" data-r
 other clips under it (sidechain) and normalises the mix to −14 LUFS.
 """
 from __future__ import annotations
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):
+    if hasattr(_s, "reconfigure"):
+        _s.reconfigure(encoding="utf-8", errors="replace")   # Windows consoles default to a legacy code page
 
 import argparse
 import json

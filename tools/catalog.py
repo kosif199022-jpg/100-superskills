@@ -1,5 +1,5 @@
 import os, re, json, sys
-ROOT = r"C:\Users\اغنام الوادي\Desktop\الاداة\kosif-atlas\skills"
+ROOT = os.environ.get("KOSIF_ATLAS_SKILLS") or (sys.argv[1] if len(sys.argv) > 1 else "../kosif-atlas/skills")  # a kosif-atlas checkout
 out = []
 lic_re = re.compile(r"License:\s*\*\*([^*]+)\*\*")
 src_re = re.compile(r"^- Source:\s*(\S+)", re.M)

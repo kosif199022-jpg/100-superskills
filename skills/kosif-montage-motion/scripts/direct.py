@@ -209,11 +209,14 @@ def apply_fixes(segs: list[dict], fixes: str | dict | None) -> list[dict]:
         return segs
     if isinstance(fixes, str):
         fixes = dict(x.split("=", 1) for x in fixes.split(";") if "=" in x)
+    fixes = {k: v for k, v in fixes.items() if k.split()}                # an empty source phrase would never advance
     out = []
     for sg in segs:
         ws = [dict(w) for w in sg["words"]]
         for src, dst in fixes.items():
             a, b = src.split(), dst.split()
+            if not a:                                          # an empty key would match everywhere and never advance
+                continue
             i = 0
             while i + len(a) <= len(ws):
                 if [w["text"].strip() for w in ws[i:i + len(a)]] == a:
@@ -236,7 +239,7 @@ def direct(clip: Path, name: str, size=(1080, 1920), model="large-v3", words_jso
     clip = Path(clip)
     W, H = size
     info = RL._probe(clip)
-    proj = MO.PROJECTS / name
+    proj = MO.PROJECTS / MO.safe_name(name)
     (proj / "assets").mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp(prefix="kosif_direct_"))
     # words
@@ -286,10 +289,10 @@ def direct(clip: Path, name: str, size=(1080, 1920), model="large-v3", words_jso
     stress = word_stress(proj / "assets" / "voice.wav", words)
     edit = {"W": W, "H": H, "fps": round(fps, 3), "duration": round(info["dur"], 3), "palette": {"ivory": "#F5F0E6", "accent": accent},
             "credit": credit, "shots": shots, **plan(segs, shots, stress, W, H, info["dur"])}
-    (proj / "edit.js").write_text("window.EDIT = " + json.dumps(edit, ensure_ascii=False, indent=1) + ";\n", encoding="utf-8")
+    (proj / "edit.js").write_text("window.EDIT = " + MO.json_for_script(edit) + ";\n", encoding="utf-8")
     (proj / "edit.json").write_text(json.dumps(edit, ensure_ascii=False, indent=1), encoding="utf-8")
     html = TEMPLATE.read_text(encoding="utf-8").replace("{{MUSIC}}", music)
-    for kk, v in {"{{W}}": W, "{{H}}": H, "{{SECONDS}}": round(info["dur"], 3), "{{FPS}}": round(fps), "{{TITLE}}": name}.items():
+    for kk, v in {"{{W}}": W, "{{H}}": H, "{{SECONDS}}": round(info["dur"], 3), "{{FPS}}": round(fps), "{{TITLE}}": MO.html_text(name)}.items():
         html = html.replace(kk, str(v))
     (proj / "index.html").write_text(html, encoding="utf-8")
     MO.sync_assets(proj)

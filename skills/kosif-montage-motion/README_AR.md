@@ -1,4 +1,4 @@
-# KOSIF Montage & Motion v5 — استوديو المونتاج والموشن
+# KOSIF Montage & Motion v5.2 — استوديو المونتاج والموشن
 
 هذه نسخة تعمل محلياً من أداة المونتاج والموشن المرفقة، وتضيف التخطيط الاحترافي والتحقق من المصادر دون الادعاء بتنفيذ Full Pro أو تحميل 15 ألف مهارة دفعة واحدة.
 
@@ -17,6 +17,16 @@ python scripts/kmotion.py reel source.mp4 --out final.mp4 --transcript source.wo
 ```
 
 إذا كان التفريغ الصوتي غير مثبت، يمكنك استخدام ملف كلمات مضبوطة التوقيت بصيغة `.words.json`. لا يتولى البرنامج إنشاء توقيت زائف من النص.
+
+## جديد v5.2
+- **`audio2motion` (Voice2Motion):** ارفع تعليقاً صوتياً + نصه (أو ملف cues.json) → فيديو موشن جرافيك تختار مشاهده حسب **معنى** كل جملة وتتنفس مع طاقة الصوت الحقيقية. الخطوط تُكتشف تلقائياً على ويندوز، والعربية مشكّلة بشكل صحيح.
+  ```bash
+  python scripts/kmotion.py audio2motion voice.wav --transcript voice.txt --out out/voice.mp4 --size 1080x1920 --fps 30
+  ```
+- **`bridge`:** عميل اختياري لمخطط Workbench الخاص (خطة/تحقق/تجميع) — يحتاج `KOSIF_SITE_TOKEN` و`--allow-remote`، ولا يصيّر شيئاً.
+- تصحيحات من تدقيق v5.1: أسماء المشاريع محصورة داخل `projects/`، العناوين مهرّبة في HTML، `Encoder` يرفع خطأ إذا فشل FFmpeg.
+- فيديو 5 ثوانٍ من البداية للنهاية: راجع §12 في SKILL.md.
+- تشغيل بنقرة (نمط KOSIF-Motion.zip): `python scripts/kmotion.py` بلا وسائط يعرض قائمة عربية مرقّمة.
 
 ## إضافات التطوير
 - مخطط 5 مشاهد متصلة زمنياً بالمعدل FPS.
@@ -64,3 +74,31 @@ python scripts/kmotion.py reel source.mp4 --out final.mp4 --transcript source.wo
   ```
   لا تُضاف موسيقى افتراضياً (الأغنية لها موسيقاها، والدعاء والتلاوة يبقيان بلا موسيقى)؛ `--music auto` يضيف خلفية
   موسيقية فقط لتعليق صوتي بلا موسيقى.
+
+## v6.0 — موقع الاستوديو المحلي (KOSIF Motion Web)
+
+```
+python scripts\kmotion.py web          أو انقر «KOSIF Motion Web.bat»  →  http://127.0.0.1:8766/
+```
+الموقع هو اليد، وClaude هو العقل: ارفع الوسائط، شغّل أي وصفة من نموذج، عاين المشاريع وعدّلها وصيّرها، اكتب تايملاين
+JSON وشاهد شريطه، تابع المهام بسجل حي، واستعمل Workbench (خطة → تحقق → manifest → معاينة → MP4 محلي). تبويب Claude
+يرسل الطلب عبر MCP أو CLI أو بالنسخ واللصق، ولا يُنفَّذ شيء قبل «تطبيق». التفاصيل في `references/web-studio.md`،
+والتايملاين في `references/timeline-schema.md`، ومصادر v6 في `references/atlas-v6-sources.md`.
+
+## v6.1 — محرر Studio في المتصفح وتصدير MP4 دقيق
+
+- محرر المونتاج من حزمة Workbench v4 صار جزءًا من الموقع المحلي على `/studio/`، ومنشورًا في السحابة باسم KOSIF Studio Cloud.
+- زر «تصدير MP4 دقيق» يرسم كل إطار بنفسه ويرمّزه بـ WebCodecs مع صوت AAC مطبّع على −14 LUFS؛ لا يحتاج زمنًا حقيقيًا ولا تبويبًا ظاهرًا ولا يُسقط إطارات.
+- `kmotion studio-import` يحوّل مشروع Studio إلى تايملاين يُصيَّر بجودة كاملة عبر FFmpeg.
+- مشهد MIDNIGHT من حزمة v4 صار مشروعًا في المحرك: `python scripts\kmotion.py render projects/midnight_cat`.
+
+## v6.2 — صفحة المراجعة وبرومبتات الفيديو
+- `kmotion review init مشروع|تايملاين|فيديو` ثم افتح `http://127.0.0.1:8766/review/الاسم/`: عدّل النصوص والألوان والتوقيت، ثبّت ملاحظة (N)، اعتمد المشاهد، ثم «أرسل إلى Claude». تُحفظ الملاحظات ليقرأها Claude (`kmotion review feedback`) ويطبّق المرتبط منها حرفياً (`kmotion review apply`). الصفحة مشغّل Motion OS من Jason Lee (رخصة MIT).
+- `kmotion aiprompts`: برومبتات لكل لقطة بالطبقات السبع لـ Veo وSora وKling وRunway.
+- `install.bat` للتثبيت بنقرة، و`KOSIF Motion.bat` للقائمة العربية.
+- مثال: `projects/night_boat` — مركب في البحر ليلاً، 5 ثوانٍ.
+- فيديو إطلاق لأي مشروع أو موقع (طريقة /brag): `kmotion brag init مجلد|رابط` ثم `kmotion brag deliver`.
+- `kmotion poster فيلم --bake`: أقوى إطار مستقر يصبح الإطار الأول، فتظهر صورة الغلاف في كل منصة.
+- `kmotion readable`: هل يبقى كل سطر وقتاً يكفي لقراءته؟ و`kmotion sfx`: 20 مؤثراً صوتياً حراً (CC0) للتايملاين.
+- استُعيدت من v5.1: رموز بالمعنى وعدّاد للأرقام في verse، وعناوين audio2motion من كلام المقطع نفسه.
+

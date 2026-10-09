@@ -4,6 +4,10 @@ pad, rain with a thunder roll, and whooshes on the beats you name. Every sound i
     python ambience.py out.wav --seconds 17 --rain 9.6:12.8 --thunder 10.6 --whoosh 0.6,15.3 --chords 0:A,6:F,12.6:C
 """
 from __future__ import annotations
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):
+    if hasattr(_s, "reconfigure"):
+        _s.reconfigure(encoding="utf-8", errors="replace")   # Windows consoles default to a legacy code page
 
 import argparse
 import math

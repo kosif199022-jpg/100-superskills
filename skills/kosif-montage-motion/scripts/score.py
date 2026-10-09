@@ -19,6 +19,10 @@ spec (all times in beats unless the key ends in _s):
 cues: [{"t": 1.25, "type": "click|pop|tick|thump|whoosh|swish|chime|type|boom|riser", "gain": 1.0, "pan": 0}]
 """
 from __future__ import annotations
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):
+    if hasattr(_s, "reconfigure"):
+        _s.reconfigure(encoding="utf-8", errors="replace")   # Windows consoles default to a legacy code page
 
 import argparse
 import json
